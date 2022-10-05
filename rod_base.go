@@ -116,8 +116,9 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
 	err = rod.Try(func() {
-		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
+		page.Timeout(timeOut).MustNavigate(desURL)
 		wait()
+		page.MustWaitLoad()
 	})
 	if err != nil {
 		if page != nil {
@@ -165,8 +166,9 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
 	err = rod.Try(func() {
-		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
+		page.Timeout(timeOut).MustNavigate(desURL)
 		wait()
+		page.MustWaitLoad()
 	})
 	if err != nil {
 		if page != nil {
