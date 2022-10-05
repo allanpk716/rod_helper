@@ -119,6 +119,8 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 		page.Timeout(timeOut).MustNavigate(desURL)
 		wait()
 		page.MustWaitLoad()
+		// 出去前把 TimeOUt 取消了
+		page = page.CancelTimeout()
 	})
 	if err != nil {
 		if page != nil {
@@ -129,8 +131,6 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	if page == nil {
 		return nil, nil, errors.New("page is nil")
 	}
-	// 出去前把 TimeOUt 取消了
-	page = page.CancelTimeout()
 
 	return page, &e, nil
 }
@@ -169,6 +169,8 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 		page.Timeout(timeOut).MustNavigate(desURL)
 		wait()
 		page.MustWaitLoad()
+		// 出去前把 TimeOUt 取消了
+		page = page.CancelTimeout()
 	})
 	if err != nil {
 		if page != nil {
@@ -179,8 +181,7 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 	if page == nil {
 		return nil, nil, errors.New("page is nil")
 	}
-	// 出去前把 TimeOUt 取消了
-	page = page.CancelTimeout()
+
 	return page, &e, nil
 }
 
