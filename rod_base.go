@@ -68,7 +68,14 @@ func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string)
 		} else {
 			strTageSite = outsideUrl
 		}
-		_, _, err = NewPageNavigate(browser, strTageSite, 15*time.Second)
+		page, _, err := NewPageNavigate(browser, strTageSite, 15*time.Second)
+		if err != nil {
+			if browser != nil {
+				_ = browser.Close()
+			}
+			return nil, err
+		}
+		err = page.WaitLoad()
 		if err != nil {
 			if browser != nil {
 				_ = browser.Close()
@@ -79,7 +86,14 @@ func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string)
 	}
 
 	if len(preLoadUrl) > 0 && preLoadUrl[0] != "" {
-		_, _, err = NewPageNavigate(browser, preLoadUrl[0], 15*time.Second)
+		page, _, err := NewPageNavigate(browser, preLoadUrl[0], 15*time.Second)
+		if err != nil {
+			if browser != nil {
+				_ = browser.Close()
+			}
+			return nil, err
+		}
+		err = page.WaitLoad()
 		if err != nil {
 			if browser != nil {
 				_ = browser.Close()
