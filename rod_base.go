@@ -60,22 +60,31 @@ func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string)
 	// 如果加载了插件，那么就需要进行一定地耗时操作，等待其第一次的加载完成
 	if loadAdblock == true {
 
-		strTageSite := ""
 		if httpProxyURL == "" {
-			strTageSite = noProxyUseUrl
+			page, _, _ := NewPageNavigate(browser, noProxyUseUrl, 15*time.Second)
+			if page != nil {
+				_ = page.Close()
+			}
 		} else {
-			strTageSite = useProxyUrl
+			page, _, _ := NewPageNavigateWithProxy(browser, httpProxyURL, useProxyUrl, 15*time.Second)
+			if page != nil {
+				_ = page.Close()
+			}
 		}
-		_, _, _ = NewPageNavigate(browser, strTageSite, 15*time.Second)
 	}
 
 	if len(preLoadUrl) > 0 && preLoadUrl[0] != "" {
-		_, _, err = NewPageNavigate(browser, preLoadUrl[0], 15*time.Second)
-		if err != nil {
-			if browser != nil {
-				_ = browser.Close()
+
+		if httpProxyURL == "" {
+			page, _, _ := NewPageNavigate(browser, preLoadUrl[0], 15*time.Second)
+			if page != nil {
+				_ = page.Close()
 			}
-			return nil, err
+		} else {
+			page, _, _ := NewPageNavigateWithProxy(browser, httpProxyURL, preLoadUrl[0], 15*time.Second)
+			if page != nil {
+				_ = page.Close()
+			}
 		}
 	}
 
@@ -116,9 +125,8 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
 	err = rod.Try(func() {
-		page.Timeout(timeOut).MustNavigate(desURL)
+		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
 		wait()
-		page.MustWaitLoad()
 		// 出去前把 TimeOUt 取消了
 		page = page.CancelTimeout()
 	})
@@ -166,9 +174,8 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
 	err = rod.Try(func() {
-		page.Timeout(timeOut).MustNavigate(desURL)
+		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
 		wait()
-		page.MustWaitLoad()
 		// 出去前把 TimeOUt 取消了
 		page = page.CancelTimeout()
 	})
