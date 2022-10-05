@@ -60,40 +60,17 @@ func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string)
 	// 如果加载了插件，那么就需要进行一定地耗时操作，等待其第一次的加载完成
 	if loadAdblock == true {
 
-		const mainlandUrl = "https://www.163.com"
-		const outsideUrl = "https://www.yahoo.com"
 		strTageSite := ""
 		if httpProxyURL == "" {
-			strTageSite = mainlandUrl
+			strTageSite = noProxyUseUrl
 		} else {
-			strTageSite = outsideUrl
+			strTageSite = useProxyUrl
 		}
-		page, _, err := NewPageNavigate(browser, strTageSite, 15*time.Second)
-		if err != nil {
-			if browser != nil {
-				_ = browser.Close()
-			}
-			return nil, err
-		}
-		err = page.WaitLoad()
-		if err != nil {
-			if browser != nil {
-				_ = browser.Close()
-			}
-			return nil, err
-		}
-		//time.Sleep(RandomSecondDuration(5, 10))
+		_, _, _ = NewPageNavigate(browser, strTageSite, 15*time.Second)
 	}
 
 	if len(preLoadUrl) > 0 && preLoadUrl[0] != "" {
-		page, _, err := NewPageNavigate(browser, preLoadUrl[0], 15*time.Second)
-		if err != nil {
-			if browser != nil {
-				_ = browser.Close()
-			}
-			return nil, err
-		}
-		err = page.WaitLoad()
+		_, _, err = NewPageNavigate(browser, preLoadUrl[0], 15*time.Second)
 		if err != nil {
 			if browser != nil {
 				_ = browser.Close()
@@ -138,9 +115,8 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	}
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
-	page = page.Timeout(timeOut)
 	err = rod.Try(func() {
-		page.MustNavigate(desURL)
+		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
 		wait()
 	})
 	if err != nil {
@@ -185,9 +161,8 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 	}
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
-	page = page.Timeout(timeOut)
 	err = rod.Try(func() {
-		page.MustNavigate(desURL)
+		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
 		wait()
 	})
 	if err != nil {
@@ -237,6 +212,14 @@ func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []stri
 	return "", errors.New("get public ip failed")
 }
 
+func SetNoProxyUseUrl(url string) {
+	noProxyUseUrl = url
+}
+
+func SetUseProxyUrl(url string) {
+	useProxyUrl = url
+}
+
 func newPage(browser *rod.Browser) (*rod.Page, error) {
 	page, err := browser.Page(proto.TargetCreateTarget{URL: ""})
 	if err != nil {
@@ -248,3 +231,8 @@ func newPage(browser *rod.Browser) (*rod.Page, error) {
 const regMatchIP = `(?m)((25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))).){3}(25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))`
 
 var ReMatchIP = regexp.MustCompile(regMatchIP)
+
+var (
+	noProxyUseUrl = "https://www.163.com"
+	useProxyUrl   = "https://www.yahoo.com"
+)
