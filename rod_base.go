@@ -61,7 +61,7 @@ func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string)
 	if loadAdblock == true {
 
 		const mainlandUrl = "https://www.163.com"
-		const outsideUrl = "https://www.google.com"
+		const outsideUrl = "https://www.yahoo.com"
 		strTageSite := ""
 		if httpProxyURL == "" {
 			strTageSite = mainlandUrl
