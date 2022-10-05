@@ -59,7 +59,23 @@ func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string)
 	}
 	// 如果加载了插件，那么就需要进行一定地耗时操作，等待其第一次的加载完成
 	if loadAdblock == true {
-		time.Sleep(RandomSecondDuration(5, 10))
+
+		const mainlandUrl = "https://www.163.com"
+		const outsideUrl = "https://www.google.com"
+		strTageSite := ""
+		if httpProxyURL == "" {
+			strTageSite = mainlandUrl
+		} else {
+			strTageSite = outsideUrl
+		}
+		_, _, err = NewPageNavigate(browser, strTageSite, 15*time.Second)
+		if err != nil {
+			if browser != nil {
+				_ = browser.Close()
+			}
+			return nil, err
+		}
+		//time.Sleep(RandomSecondDuration(5, 10))
 	}
 
 	if len(preLoadUrl) > 0 && preLoadUrl[0] != "" {
