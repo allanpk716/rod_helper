@@ -1,13 +1,17 @@
 package rod_helper
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 	crx3 "github.com/mediabuyerbot/go-crx3"
 	"github.com/pkg/errors"
+	"net/http"
+	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -81,6 +85,16 @@ func NewPageNavigate(browser *rod.Browser, desURL string, timeOut time.Duration)
 	return PageNavigate(page, desURL, timeOut)
 }
 
+func NewPageNavigateWithProxy(browser *rod.Browser, proxyUrl string, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
+
+	page, err := newPage(browser)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return PageNavigateWithProxy(page, proxyUrl, desURL, timeOut)
+}
+
 func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
 
 	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
@@ -111,6 +125,88 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	return page, &e, nil
 }
 
+func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
+
+	router := page.HijackRequests()
+	defer router.Stop()
+
+	router.MustAdd("*", func(ctx *rod.Hijack) {
+		px, _ := url.Parse(proxyUrl)
+		err := ctx.LoadResponse(&http.Client{
+			Transport: &http.Transport{
+				Proxy:           http.ProxyURL(px),
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}, true)
+		if err != nil {
+			return
+		}
+	})
+	go router.Run()
+
+	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
+		UserAgent: RandomUserAgent(true),
+	})
+	if err != nil {
+		if page != nil {
+			page.Close()
+		}
+		return nil, nil, err
+	}
+	var e proto.NetworkResponseReceived
+	wait := page.WaitEvent(&e)
+	page = page.Timeout(timeOut)
+	err = rod.Try(func() {
+		page.MustNavigate(desURL)
+		wait()
+	})
+	if err != nil {
+		if page != nil {
+			page.Close()
+		}
+		return nil, nil, err
+	}
+	// 出去前把 TimeOUt 取消了
+	page = page.CancelTimeout()
+	return page, &e, nil
+}
+
+func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []string) (string, error) {
+	defPublicIPSites := []string{
+		"https://myip.biturl.top/",
+		"https://ip4.seeip.org/",
+		"https://ipecho.net/plain",
+		"https://api-ipv4.ip.sb/ip",
+		"https://api.ipify.org/",
+		"http://myexternalip.com/raw",
+	}
+
+	customPublicIPSites := make([]string, 0)
+	if customDectIPSites != nil {
+		customPublicIPSites = append(customPublicIPSites, customDectIPSites...)
+	} else {
+		customPublicIPSites = append(customPublicIPSites, defPublicIPSites...)
+	}
+
+	for _, publicIPSite := range customPublicIPSites {
+
+		publicIPPage, _, err := PageNavigate(page, publicIPSite, timeOut)
+		if err != nil {
+			return "", err
+		}
+		html, err := publicIPPage.HTML()
+		if err != nil {
+			return "", err
+		}
+		matcheds := ReMatchIP.FindAllString(html, -1)
+		if html != "" && matcheds != nil && len(matcheds) >= 1 {
+			return matcheds[0], nil
+		}
+	}
+
+	return "", errors.New("get public ip failed")
+}
+
 func newPage(browser *rod.Browser) (*rod.Page, error) {
 	page, err := browser.Page(proto.TargetCreateTarget{URL: ""})
 	if err != nil {
@@ -118,3 +214,7 @@ func newPage(browser *rod.Browser) (*rod.Page, error) {
 	}
 	return page, err
 }
+
+const regMatchIP = `(?m)((25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))).){3}(25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))`
+
+var ReMatchIP = regexp.MustCompile(regMatchIP)
