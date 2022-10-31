@@ -91,6 +91,11 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 	return b
 }
 
+// GetOptions 获取设置的参数
+func (b *Browser) GetOptions() *BrowserOptions {
+	return b.rodOptions
+}
+
 // GetLBBrowser 这里获取到的 Browser 使用的代理是负载均衡的代理
 func (b *Browser) GetLBBrowser() *rod.Browser {
 
