@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string) (*rod.Browser, error) {
+func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock bool, preLoadUrl ...string) (*rod.Browser, error) {
 
 	var err error
 	// 随机的 rod 子文件夹名称
@@ -24,6 +24,8 @@ func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string)
 	var browser *rod.Browser
 	// 如果没有指定 chrome 的路径，则使用 rod 自行下载的 chrome
 	err = rod.Try(func() {
+
+		var nowLancher *launcher.Launcher
 		purl := ""
 		if loadAdblock == true {
 
@@ -36,22 +38,24 @@ func NewBrowserBase(httpProxyURL string, loadAdblock bool, preLoadUrl ...string)
 			}
 			filenameOnly := strings.TrimSuffix(filepath.Base(desFile), filepath.Ext(desFile))
 
-			purl = launcher.New().
+			nowLancher = launcher.New().
 				Delete("disable-extensions").
 				Set("load-extension", filepath.Join(GetADBlockFolder(), filenameOnly)).
 				Proxy(httpProxyURL).
 				Headless(false). // 插件模式需要设置这个
-				UserDataDir(nowUserData).
-				//XVFB("--server-num=5", "--server-args=-screen 0 1600x900x16").
-				//XVFB("-ac :99", "-screen 0 1280x1024x16").
-				MustLaunch()
+				UserDataDir(nowUserData)
+			//XVFB("--server-num=5", "--server-args=-screen 0 1600x900x16").
+			//XVFB("-ac :99", "-screen 0 1280x1024x16").
 		} else {
-			purl = launcher.New().
+			nowLancher = launcher.New().
 				Proxy(httpProxyURL).
-				UserDataDir(nowUserData).
-				MustLaunch()
+				UserDataDir(nowUserData)
 		}
-
+		if browserFPath != "" {
+			// 指定浏览器启动
+			nowLancher = nowLancher.Bin(browserFPath)
+		}
+		purl = nowLancher.MustLaunch()
 		browser = rod.New().ControlURL(purl).MustConnect()
 	})
 	if err != nil {

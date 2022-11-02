@@ -6,15 +6,16 @@ import (
 
 type BrowserOptions struct {
 	Log                  *logrus.Logger // 日志
-	LoadAdblock          bool           // 是否加载 adblock
+	loadAdblock          bool           // 是否加载 adblock
 	preLoadUrl           string         // 预加载的url
 	xrayPoolUrl          string         // xray pool url
 	xrayPoolPort         string         // xray pool port
 	browserInstanceCount int            // 浏览器最大的实例，xrayPoolUrl 有值的时候生效，用于爬虫。因为每启动一个实例就试用一个固定的代理，所以需要多个才行
+	browserFPath         string         // 浏览器的路径
 }
 
 func NewBrowserOptions(log *logrus.Logger, loadAdblock bool) *BrowserOptions {
-	return &BrowserOptions{Log: log, LoadAdblock: loadAdblock, browserInstanceCount: 1}
+	return &BrowserOptions{Log: log, loadAdblock: loadAdblock, browserInstanceCount: 1}
 }
 
 func (r *BrowserOptions) SetPreLoadUrl(url string) {
@@ -49,4 +50,16 @@ func (r *BrowserOptions) SetBrowserInstanceCount(count int) {
 }
 func (r *BrowserOptions) BrowserInstanceCount() int {
 	return r.browserInstanceCount
+}
+
+func (r *BrowserOptions) LoadAdblock() bool {
+	return r.loadAdblock
+}
+
+func (r *BrowserOptions) BrowserFPath() string {
+	return r.browserFPath
+}
+
+func (r *BrowserOptions) SetBrowserFPath(path string) {
+	r.browserFPath = path
 }

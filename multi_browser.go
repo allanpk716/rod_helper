@@ -80,7 +80,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 	b.LbHttpUrl = fmt.Sprintf(httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(b.LBPort))
 	for i := 0; i < browserOptions.BrowserInstanceCount(); i++ {
 
-		oneBrowser, err := NewBrowserBase(b.LbHttpUrl, browserOptions.LoadAdblock)
+		oneBrowser, err := NewBrowserBase(browserOptions.BrowserFPath(), b.LbHttpUrl, browserOptions.LoadAdblock())
 		if err != nil {
 			b.log.Error(errors.New("NewBrowserBase error:" + err.Error()))
 			return nil
@@ -125,7 +125,7 @@ func (b *Browser) NewBrowser() (*rod.Browser, error) {
 		b.httpProxyIndex = 0
 	}
 
-	oneBrowser, err := NewBrowserBase(b.httpProxyUrls[b.httpProxyIndex], b.rodOptions.LoadAdblock)
+	oneBrowser, err := NewBrowserBase(b.rodOptions.BrowserFPath(), b.httpProxyUrls[b.httpProxyIndex], b.rodOptions.LoadAdblock())
 	if err != nil {
 		return nil, errors.New("NewBrowser.NewBrowserBase error:" + err.Error())
 	}
