@@ -220,32 +220,32 @@ func SetUseProxyUrl(url string) {
 }
 
 // ContainedFailedWords 返回的页面是否包含失败的关键词
-func ContainedFailedWords(pageContent string, failedWords []string) bool {
+func ContainedFailedWords(pageContent string, failedWords []string) (bool, int) {
 
-	for _, word := range failedWords {
+	for i, word := range failedWords {
 
 		if strings.Contains(strings.ToLower(pageContent), word) == true {
-			return true
+			return true, i
 		}
 	}
-	return false
+	return false, -1
 }
 
 // ContainedFailedWordsRegex 返回的页面是否包含失败的关键词正则表达式
-func ContainedFailedWordsRegex(pageContent string, failedWordsRegex []string) bool {
+func ContainedFailedWordsRegex(pageContent string, failedWordsRegex []string) (bool, int) {
 
-	for _, wordRegex := range failedWordsRegex {
+	for i, wordRegex := range failedWordsRegex {
 
 		failedRegex := regexp.MustCompile(wordRegex)
 		matches := failedRegex.FindAllString(pageContent, -1)
 		if matches == nil || len(matches) == 0 {
 			// 没有找到匹配的内容，那么认为是成功的
 		} else {
-			return true
+			return true, i
 		}
 	}
 
-	return false
+	return false, -1
 }
 
 func newPage(browser *rod.Browser) (*rod.Page, error) {
