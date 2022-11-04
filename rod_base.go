@@ -1,6 +1,7 @@
 package rod_helper
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/go-rod/rod"
@@ -134,9 +135,15 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	})
 	if err != nil {
 		if page != nil {
-			_ = page.Close()
+			if errors.Is(err, context.DeadlineExceeded) == false {
+				// 不是超时问题就关闭 page
+				_ = page.Close()
+				return nil, nil, err
+			} else {
+				// 是超时问题
+				return page, &e, nil
+			}
 		}
-		return nil, nil, err
 	}
 	if page == nil {
 		return nil, nil, errors.New("page is nil")
@@ -181,9 +188,15 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 	})
 	if err != nil {
 		if page != nil {
-			page.Close()
+			if errors.Is(err, context.DeadlineExceeded) == false {
+				// 不是超时问题就关闭 page
+				_ = page.Close()
+				return nil, nil, err
+			} else {
+				// 是超时问题
+				return page, &e, nil
+			}
 		}
-		return nil, nil, err
 	}
 	if page == nil {
 		return nil, nil, errors.New("page is nil")
