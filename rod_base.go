@@ -3,17 +3,14 @@ package rod_helper
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
-	crx3 "github.com/mediabuyerbot/go-crx3"
 	"github.com/pkg/errors"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -30,18 +27,9 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock bool, preLoad
 		purl := ""
 		if loadAdblock == true {
 
-			desFile, err := GetADBlock(httpProxyURL)
-			if err != nil {
-				panic(errors.New(fmt.Sprintf("get adblock failed: %s", err)))
-			}
-			if err = crx3.Extension(desFile).Unpack(); err != nil {
-				panic(errors.New("unpack adblock failed: " + err.Error()))
-			}
-			filenameOnly := strings.TrimSuffix(filepath.Base(desFile), filepath.Ext(desFile))
-
 			nowLancher = launcher.New().
 				Delete("disable-extensions").
-				Set("load-extension", filepath.Join(GetADBlockFolder(), filenameOnly)).
+				Set("load-extension", GetADBlockLocalPath(httpProxyURL)).
 				Proxy(httpProxyURL).
 				Headless(false). // 插件模式需要设置这个
 				UserDataDir(nowUserData)

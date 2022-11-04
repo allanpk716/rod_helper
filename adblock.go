@@ -6,6 +6,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+	"github.com/mediabuyerbot/go-crx3"
 	"github.com/pkg/errors"
 	"path/filepath"
 	"strings"
@@ -71,6 +72,20 @@ func GetADBlock(httpProxyUrl string) (string, error) {
 	}
 
 	return desFile, nil
+}
+
+// GetADBlockLocalPath 获取本地的 adblock 插件路径，如果不存在会自动去远程下载
+func GetADBlockLocalPath(httpProxyUrl string) string {
+	desFile, err := GetADBlock(httpProxyUrl)
+	if err != nil {
+		panic(errors.New(fmt.Sprintf("get adblock failed: %s", err)))
+	}
+	if err = crx3.Extension(desFile).Unpack(); err != nil {
+		panic(errors.New("unpack adblock failed: " + err.Error()))
+	}
+	filenameOnly := strings.TrimSuffix(filepath.Base(desFile), filepath.Ext(desFile))
+
+	return filepath.Join(GetADBlockFolder(), filenameOnly)
 }
 
 func getDownloadedCacheTime() *ADBlockCacheInfo {
