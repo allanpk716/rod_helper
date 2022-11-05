@@ -75,11 +75,12 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 	for _, result := range proxyResult.OpenResultList {
 
 		tmpProxyInfos := XrayPoolProxyInfo{
-			Name:           result.Name,
-			ProtoModel:     result.ProtoModel,
-			HttpUrl:        httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.HttpPort),
-			SocksUrl:       socksPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.SocksPort),
-			LastAccessTime: 0,
+			Name:            result.Name,
+			ProtoModel:      result.ProtoModel,
+			HttpUrl:         httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.HttpPort),
+			SocksUrl:        socksPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.SocksPort),
+			lastAccessTime:  0,
+			accessTimeLines: make([]int64, 0),
 		}
 		b.proxyInfos = append(b.proxyInfos, tmpProxyInfos)
 	}
@@ -136,12 +137,13 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 	}
 
 	// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
-	b.proxyInfos[b.httpProxyIndex].LastAccessTime = time.Now().Unix()
+	b.proxyInfos[b.httpProxyIndex].lastAccessTime = time.Now().Unix()
+	b.proxyInfos[b.httpProxyIndex].accessTimeLines = append(b.proxyInfos[b.httpProxyIndex].accessTimeLines, b.proxyInfos[b.httpProxyIndex].lastAccessTime)
 	return b.proxyInfos[b.httpProxyIndex], nil
 }
 
 // GetNowProxyInfoLastAccessTime 获取当前代理的最后访问时间
-func (b *Browser) GetNowProxyInfoLastAccessTime() (string, int64, error) {
+func (b *Browser) GetNowProxyInfoLastAccessTime() (string, int, int64, error) {
 
 	b.httpProxyLocker.Lock()
 	defer func() {
@@ -149,13 +151,46 @@ func (b *Browser) GetNowProxyInfoLastAccessTime() (string, int64, error) {
 	}()
 
 	if len(b.proxyInfos) < 1 {
-		return "", 0, errors.New("proxyInfos is empty")
+		return "", 0, 0, errors.New("proxyInfos is empty")
 	}
 
-	if b.proxyInfos[b.httpProxyIndex].LastAccessTime <= 0 {
-		b.proxyInfos[b.httpProxyIndex].LastAccessTime = time.Now().Unix()
+	return b.proxyInfos[b.httpProxyIndex].Name, b.httpProxyIndex, b.proxyInfos[b.httpProxyIndex].lastAccessTime, nil
+}
+
+func (b *Browser) GetAccessTimeLines(index int) ([]int64, error) {
+	b.httpProxyLocker.Lock()
+	defer func() {
+		b.httpProxyLocker.Unlock()
+	}()
+
+	if len(b.proxyInfos) < 1 {
+		return nil, errors.New("proxyInfos is empty")
 	}
-	return b.proxyInfos[b.httpProxyIndex].Name, b.proxyInfos[b.httpProxyIndex].LastAccessTime, nil
+
+	if index >= len(b.proxyInfos) {
+		return nil, errors.New("index is out of range")
+	}
+
+	return b.proxyInfos[index].accessTimeLines, nil
+}
+
+func (b *Browser) ClearAccessTimeLines(index int) error {
+	b.httpProxyLocker.Lock()
+	defer func() {
+		b.httpProxyLocker.Unlock()
+	}()
+
+	if len(b.proxyInfos) < 1 {
+		return errors.New("proxyInfos is empty")
+	}
+
+	if index >= len(b.proxyInfos) {
+		return errors.New("index is out of range")
+	}
+
+	b.proxyInfos[index].accessTimeLines = make([]int64, 0)
+
+	return nil
 }
 
 // NewBrowser 每次新建一个 Browser ，使用 HttpProxy 列表中的一个作为代理
@@ -207,11 +242,12 @@ type OpenResult struct {
 }
 
 type XrayPoolProxyInfo struct {
-	Name           string `json:"name"`
-	ProtoModel     string `json:"proto_model"`
-	SocksUrl       string `json:"socks_url"`
-	HttpUrl        string `json:"http_url"`
-	LastAccessTime int64  `json:"last_access_time"`
+	Name            string  `json:"name"`
+	ProtoModel      string  `json:"proto_model"`
+	SocksUrl        string  `json:"socks_url"`
+	HttpUrl         string  `json:"http_url"`
+	lastAccessTime  int64   // 最后的访问时间
+	accessTimeLines []int64 // 每一次访问时间的队列
 }
 
 const (
