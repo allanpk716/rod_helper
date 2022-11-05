@@ -134,7 +134,7 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 	if len(b.proxyInfos) < 1 {
 		return XrayPoolProxyInfo{}, errors.New("proxyInfos is empty")
 	}
-	
+
 	// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
 	b.proxyInfos[b.httpProxyIndex].LastAccessTime = time.Now().Unix()
 	return b.proxyInfos[b.httpProxyIndex], nil
@@ -150,6 +150,10 @@ func (b *Browser) GetNowProxyInfoLastAccessTime() (string, int64, error) {
 
 	if len(b.proxyInfos) < 1 {
 		return "", 0, errors.New("proxyInfos is empty")
+	}
+
+	if b.proxyInfos[b.httpProxyIndex].LastAccessTime <= 0 {
+		b.proxyInfos[b.httpProxyIndex].LastAccessTime = time.Now().Unix()
 	}
 	return b.proxyInfos[b.httpProxyIndex].Name, b.proxyInfos[b.httpProxyIndex].LastAccessTime, nil
 }
