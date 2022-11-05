@@ -125,17 +125,16 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 	b.httpProxyLocker.Lock()
 	defer func() {
 		b.httpProxyIndex++
+		if b.httpProxyIndex >= len(b.proxyInfos) {
+			b.httpProxyIndex = 0
+		}
 		b.httpProxyLocker.Unlock()
 	}()
 
 	if len(b.proxyInfos) < 1 {
 		return XrayPoolProxyInfo{}, errors.New("proxyInfos is empty")
 	}
-
-	if b.httpProxyIndex >= len(b.proxyInfos) {
-		b.httpProxyIndex = 0
-	}
-
+	
 	// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
 	b.proxyInfos[b.httpProxyIndex].LastAccessTime = time.Now().Unix()
 	return b.proxyInfos[b.httpProxyIndex], nil
