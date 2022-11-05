@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -74,10 +75,11 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 	for _, result := range proxyResult.OpenResultList {
 
 		tmpProxyInfos := XrayPoolProxyInfo{
-			Name:       result.Name,
-			ProtoModel: result.ProtoModel,
-			HttpUrl:    httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.HttpPort),
-			SocksUrl:   socksPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.SocksPort),
+			Name:           result.Name,
+			ProtoModel:     result.ProtoModel,
+			HttpUrl:        httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.HttpPort),
+			SocksUrl:       socksPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.SocksPort),
+			LastAccessTime: 0,
 		}
 		b.proxyInfos = append(b.proxyInfos, tmpProxyInfos)
 	}
@@ -118,6 +120,7 @@ func (b *Browser) GetLBBrowser() *rod.Browser {
 	return b.multiBrowser[b.browserIndex]
 }
 
+// GetOneProxyInfo 轮询获取一个代理实例
 func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 	b.httpProxyLocker.Lock()
 	defer func() {
@@ -133,7 +136,23 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 		b.httpProxyIndex = 0
 	}
 
+	// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
+	b.proxyInfos[b.httpProxyIndex].LastAccessTime = time.Now().Unix()
 	return b.proxyInfos[b.httpProxyIndex], nil
+}
+
+// GetNowProxyInfoLastAccessTime 获取当前代理的最后访问时间
+func (b *Browser) GetNowProxyInfoLastAccessTime() (int64, error) {
+
+	b.httpProxyLocker.Lock()
+	defer func() {
+		b.httpProxyLocker.Unlock()
+	}()
+
+	if len(b.proxyInfos) < 1 {
+		return 0, errors.New("proxyInfos is empty")
+	}
+	return b.proxyInfos[b.httpProxyIndex].LastAccessTime, nil
 }
 
 // NewBrowser 每次新建一个 Browser ，使用 HttpProxy 列表中的一个作为代理
@@ -185,10 +204,11 @@ type OpenResult struct {
 }
 
 type XrayPoolProxyInfo struct {
-	Name       string `json:"name"`
-	ProtoModel string `json:"proto_model"`
-	SocksUrl   string `json:"socks_url"`
-	HttpUrl    string `json:"http_url"`
+	Name           string `json:"name"`
+	ProtoModel     string `json:"proto_model"`
+	SocksUrl       string `json:"socks_url"`
+	HttpUrl        string `json:"http_url"`
+	LastAccessTime int64  `json:"last_access_time"`
 }
 
 const (
