@@ -80,6 +80,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 			ProtoModel:      result.ProtoModel,
 			HttpUrl:         httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.HttpPort),
 			SocksUrl:        socksPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.SocksPort),
+			skipAccessTime:  0,
 			lastAccessTime:  0,
 			accessTimeLines: make([]int64, 0),
 		}
@@ -134,11 +135,16 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 	}()
 
 	if len(b.proxyInfos) < 1 {
-		return XrayPoolProxyInfo{}, errors.New("proxyInfos is empty")
+		return XrayPoolProxyInfo{}, ErrProxyInfosIsEmpty
 	}
 
+	nowUnixTime := time.Now().Unix()
+	if b.proxyInfos[b.httpProxyIndex].skipAccessTime > nowUnixTime {
+		// 这个节点需要跳过
+		return XrayPoolProxyInfo{}, ErrSkipAccessTime
+	}
 	// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
-	b.proxyInfos[b.httpProxyIndex].lastAccessTime = time.Now().Unix()
+	b.proxyInfos[b.httpProxyIndex].lastAccessTime = nowUnixTime
 	b.proxyInfos[b.httpProxyIndex].accessTimeLines = append(b.proxyInfos[b.httpProxyIndex].accessTimeLines, b.proxyInfos[b.httpProxyIndex].lastAccessTime)
 	return b.proxyInfos[b.httpProxyIndex], nil
 }
@@ -152,7 +158,7 @@ func (b *Browser) GetNowProxyInfoLastAccessTime() (string, int, int64, error) {
 	}()
 
 	if len(b.proxyInfos) < 1 {
-		return "", 0, 0, errors.New("proxyInfos is empty")
+		return "", 0, 0, ErrProxyInfosIsEmpty
 	}
 
 	return b.proxyInfos[b.httpProxyIndex].Name, b.httpProxyIndex, b.proxyInfos[b.httpProxyIndex].lastAccessTime, nil
@@ -165,11 +171,11 @@ func (b *Browser) GetAccessTimeLines(index int) ([]int64, error) {
 	}()
 
 	if len(b.proxyInfos) < 1 {
-		return nil, errors.New("proxyInfos is empty")
+		return nil, ErrProxyInfosIsEmpty
 	}
 
 	if index >= len(b.proxyInfos) {
-		return nil, errors.New("index is out of range")
+		return nil, ErrIndexIsOutOfRange
 	}
 
 	return b.proxyInfos[index].accessTimeLines, nil
@@ -182,15 +188,34 @@ func (b *Browser) ClearAccessTimeLines(index int) error {
 	}()
 
 	if len(b.proxyInfos) < 1 {
-		return errors.New("proxyInfos is empty")
+		return ErrProxyInfosIsEmpty
 	}
 
 	if index >= len(b.proxyInfos) {
-		return errors.New("index is out of range")
+		return ErrIndexIsOutOfRange
 	}
 
 	b.proxyInfos[index].accessTimeLines = make([]int64, 0)
 
+	return nil
+}
+
+// SetProxyNodeSkipByTime 设置这个节点，等待多少秒之后才可以被再次使用，仅仅针对 GetOneProxyInfo 有效
+func (b *Browser) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error {
+	b.httpProxyLocker.Lock()
+	defer func() {
+		b.httpProxyLocker.Unlock()
+	}()
+
+	if len(b.proxyInfos) < 1 {
+		return ErrProxyInfosIsEmpty
+	}
+
+	if index >= len(b.proxyInfos) {
+		return ErrIndexIsOutOfRange
+	}
+
+	b.proxyInfos[index].skipAccessTime = targetSkipTime
 	return nil
 }
 
@@ -204,7 +229,7 @@ func (b *Browser) NewBrowser() (*rod.Browser, error) {
 	}()
 
 	if len(b.proxyInfos) < 1 {
-		return nil, errors.New("proxyInfos is empty")
+		return nil, ErrProxyInfosIsEmpty
 	}
 
 	if b.httpProxyIndex >= len(b.proxyInfos) {
@@ -248,6 +273,7 @@ type XrayPoolProxyInfo struct {
 	ProtoModel      string  `json:"proto_model"`
 	SocksUrl        string  `json:"socks_url"`
 	HttpUrl         string  `json:"http_url"`
+	skipAccessTime  int64   // 如果当前时间大于这个时间，这个节点才可以被访问
 	lastAccessTime  int64   // 最后的访问时间
 	accessTimeLines []int64 // 每一次访问时间的队列
 }
