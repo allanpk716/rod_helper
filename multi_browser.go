@@ -266,6 +266,10 @@ type XrayPoolProxyInfo struct {
 	accessTimeLines []int64 // 每一次访问时间的队列
 }
 
+func (x *XrayPoolProxyInfo) GetLastAccessTime() int64 {
+	return x.lastAccessTime
+}
+
 const (
 	httpPrefix  = "http://"
 	socksPrefix = "socks5://"
