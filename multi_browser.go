@@ -142,7 +142,7 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 }
 
 // GetNowProxyInfoLastAccessTime 获取当前代理的最后访问时间
-func (b *Browser) GetNowProxyInfoLastAccessTime() (int64, error) {
+func (b *Browser) GetNowProxyInfoLastAccessTime() (string, int64, error) {
 
 	b.httpProxyLocker.Lock()
 	defer func() {
@@ -150,9 +150,9 @@ func (b *Browser) GetNowProxyInfoLastAccessTime() (int64, error) {
 	}()
 
 	if len(b.proxyInfos) < 1 {
-		return 0, errors.New("proxyInfos is empty")
+		return "", 0, errors.New("proxyInfos is empty")
 	}
-	return b.proxyInfos[b.httpProxyIndex].LastAccessTime, nil
+	return b.proxyInfos[b.httpProxyIndex].Name, b.proxyInfos[b.httpProxyIndex].LastAccessTime, nil
 }
 
 // NewBrowser 每次新建一个 Browser ，使用 HttpProxy 列表中的一个作为代理
