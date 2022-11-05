@@ -141,7 +141,7 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 	nowUnixTime := time.Now().Unix()
 	if b.proxyInfos[b.httpProxyIndex].skipAccessTime > nowUnixTime {
 		// 这个节点需要跳过
-		return XrayPoolProxyInfo{}, ErrSkipAccessTime
+		return b.proxyInfos[b.httpProxyIndex], ErrSkipAccessTime
 	}
 	// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
 	b.proxyInfos[b.httpProxyIndex].lastAccessTime = nowUnixTime
@@ -149,8 +149,8 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 	return b.proxyInfos[b.httpProxyIndex], nil
 }
 
-// GetNowProxyInfoLastAccessTime 获取当前代理的最后访问时间
-func (b *Browser) GetNowProxyInfoLastAccessTime() (string, int, int64, error) {
+// GetNextProxyInfoLastAccessTime 获取当前代理的最后访问时间
+func (b *Browser) GetNextProxyInfoLastAccessTime() (string, int, int64, error) {
 
 	b.httpProxyLocker.Lock()
 	defer func() {
