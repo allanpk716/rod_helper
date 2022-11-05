@@ -125,8 +125,14 @@ func (b *Browser) GetLBBrowser() *rod.Browser {
 
 // GetOneProxyInfo 轮询获取一个代理实例
 func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
+
 	b.httpProxyLocker.Lock()
+	nowUnixTime := time.Now().Unix()
 	defer func() {
+		// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
+		b.proxyInfos[b.httpProxyIndex].lastAccessTime = nowUnixTime
+		b.proxyInfos[b.httpProxyIndex].accessTimeLines = append(b.proxyInfos[b.httpProxyIndex].accessTimeLines, b.proxyInfos[b.httpProxyIndex].lastAccessTime)
+		// 下一个节点
 		b.httpProxyIndex++
 		if b.httpProxyIndex >= len(b.proxyInfos) {
 			b.httpProxyIndex = 0
@@ -138,30 +144,12 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 		return XrayPoolProxyInfo{}, ErrProxyInfosIsEmpty
 	}
 
-	nowUnixTime := time.Now().Unix()
 	if b.proxyInfos[b.httpProxyIndex].skipAccessTime > nowUnixTime {
 		// 这个节点需要跳过
 		return b.proxyInfos[b.httpProxyIndex], ErrSkipAccessTime
 	}
-	// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
-	b.proxyInfos[b.httpProxyIndex].lastAccessTime = nowUnixTime
-	b.proxyInfos[b.httpProxyIndex].accessTimeLines = append(b.proxyInfos[b.httpProxyIndex].accessTimeLines, b.proxyInfos[b.httpProxyIndex].lastAccessTime)
+
 	return b.proxyInfos[b.httpProxyIndex], nil
-}
-
-// GetNextProxyInfoLastAccessTime 获取当前代理的最后访问时间
-func (b *Browser) GetNextProxyInfoLastAccessTime() (string, int, int64, error) {
-
-	b.httpProxyLocker.Lock()
-	defer func() {
-		b.httpProxyLocker.Unlock()
-	}()
-
-	if len(b.proxyInfos) < 1 {
-		return "", 0, 0, ErrProxyInfosIsEmpty
-	}
-
-	return b.proxyInfos[b.httpProxyIndex].Name, b.httpProxyIndex, b.proxyInfos[b.httpProxyIndex].lastAccessTime, nil
 }
 
 func (b *Browser) GetAccessTimeLines(index int) ([]int64, error) {
