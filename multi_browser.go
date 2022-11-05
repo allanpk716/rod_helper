@@ -72,9 +72,10 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 		proxyInfos:   make([]XrayPoolProxyInfo, 0),
 	}
 
-	for _, result := range proxyResult.OpenResultList {
+	for index, result := range proxyResult.OpenResultList {
 
 		tmpProxyInfos := XrayPoolProxyInfo{
+			Index:           index,
 			Name:            result.Name,
 			ProtoModel:      result.ProtoModel,
 			HttpUrl:         httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.HttpPort),
@@ -221,7 +222,7 @@ func (b *Browser) NewBrowser() (*rod.Browser, error) {
 func (b *Browser) Close() {
 
 	for _, oneBrowser := range b.multiBrowser {
-		oneBrowser.Close()
+		_ = oneBrowser.Close()
 	}
 
 	b.multiBrowser = make([]*rod.Browser, 0)
@@ -242,6 +243,7 @@ type OpenResult struct {
 }
 
 type XrayPoolProxyInfo struct {
+	Index           int
 	Name            string  `json:"name"`
 	ProtoModel      string  `json:"proto_model"`
 	SocksUrl        string  `json:"socks_url"`
