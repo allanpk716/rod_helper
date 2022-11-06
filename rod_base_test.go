@@ -9,7 +9,7 @@ func TestNewBrowserBase(t *testing.T) {
 
 	httpProxyUrl := "http://192.168.50.252:20171"
 	movieUrl := "https://www.google.com"
-	b, err := NewBrowserBase("", httpProxyUrl, true)
+	b, err := NewBrowserBase("", httpProxyUrl, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}

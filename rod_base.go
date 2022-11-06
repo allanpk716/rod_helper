@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock bool, preLoadUrl ...string) (*rod.Browser, error) {
+func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool, preLoadUrl ...string) (*rod.Browser, error) {
 
 	var err error
 	// 随机的 rod 子文件夹名称
@@ -29,7 +29,6 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock bool, preLoad
 
 			nowLancher = launcher.New().
 				Delete("disable-extensions").
-				Set("load-extension", GetADBlockLocalPath(httpProxyURL)).
 				Proxy(httpProxyURL).
 				Headless(false). // 插件模式需要设置这个
 				UserDataDir(nowUserData)
@@ -40,6 +39,11 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock bool, preLoad
 				Proxy(httpProxyURL).
 				UserDataDir(nowUserData)
 		}
+
+		if loadPic == false {
+			nowLancher.Set("blink-settings", "imagesEnabled=false")
+		}
+
 		if browserFPath != "" {
 			// 指定浏览器启动
 			nowLancher = nowLancher.Bin(browserFPath)

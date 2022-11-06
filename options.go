@@ -7,6 +7,7 @@ import (
 type BrowserOptions struct {
 	Log                  *logrus.Logger // 日志
 	loadAdblock          bool           // 是否加载 adblock
+	loadPic              bool           // 是否加载图片
 	preLoadUrl           string         // 预加载的url
 	xrayPoolUrl          string         // xray pool url
 	xrayPoolPort         string         // xray pool port
@@ -14,8 +15,8 @@ type BrowserOptions struct {
 	browserFPath         string         // 浏览器的路径
 }
 
-func NewBrowserOptions(log *logrus.Logger, loadAdblock bool) *BrowserOptions {
-	return &BrowserOptions{Log: log, loadAdblock: loadAdblock, browserInstanceCount: 1}
+func NewBrowserOptions(log *logrus.Logger, loadAdblock bool, loadPic bool) *BrowserOptions {
+	return &BrowserOptions{Log: log, loadAdblock: loadAdblock, loadPic: loadPic, browserInstanceCount: 1}
 }
 
 func (r *BrowserOptions) SetPreLoadUrl(url string) {
@@ -54,6 +55,10 @@ func (r *BrowserOptions) BrowserInstanceCount() int {
 
 func (r *BrowserOptions) LoadAdblock() bool {
 	return r.loadAdblock
+}
+
+func (r *BrowserOptions) LoadPicture() bool {
+	return r.loadPic
 }
 
 func (r *BrowserOptions) BrowserFPath() string {
