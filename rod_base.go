@@ -224,8 +224,8 @@ func SetUseProxyUrl(url string) {
 	useProxyUrl = url
 }
 
-// ContainedFailedWords 返回的页面是否包含失败的关键词
-func ContainedFailedWords(pageContent string, failedWords []string) (bool, int) {
+// ContainedWords 返回的页面是否包含关键词
+func ContainedWords(pageContent string, failedWords []string) (bool, int) {
 
 	for i, word := range failedWords {
 
@@ -236,8 +236,8 @@ func ContainedFailedWords(pageContent string, failedWords []string) (bool, int) 
 	return false, -1
 }
 
-// ContainedFailedWordsRegex 返回的页面是否包含失败的关键词正则表达式
-func ContainedFailedWordsRegex(pageContent string, failedWordsRegex []string) (bool, int) {
+// ContainedWordsRegex 返回的页面是否包含关键词正则表达式
+func ContainedWordsRegex(pageContent string, failedWordsRegex []string) (bool, int) {
 
 	for i, wordRegex := range failedWordsRegex {
 
