@@ -29,6 +29,7 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool
 
 			nowLancher = launcher.New().
 				Delete("disable-extensions").
+				Set("load-extension", GetADBlockLocalPath(httpProxyURL)).
 				Proxy(httpProxyURL).
 				Headless(false). // 插件模式需要设置这个
 				UserDataDir(nowUserData)
