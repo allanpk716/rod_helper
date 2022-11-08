@@ -17,15 +17,15 @@ import (
 
 type Browser struct {
 	log             *logrus.Logger
-	rodOptions      *BrowserOptions     // 参数
-	multiBrowser    []*rod.Browser      // 多浏览器实例
-	browserIndex    int                 // 当前使用的浏览器的索引
-	browserLocker   sync.Mutex          // 浏览器的锁
-	httpProxyIndex  int                 // 当前使用的 http 代理的索引
-	httpProxyLocker sync.Mutex          // http 代理的锁
-	LbHttpUrl       string              // 负载均衡的 http proxy url
-	LBPort          int                 //负载均衡 http 端口
-	proxyInfos      []XrayPoolProxyInfo // XrayPool 中的代理信息
+	rodOptions      *BrowserOptions      // 参数
+	multiBrowser    []*rod.Browser       // 多浏览器实例
+	browserIndex    int                  // 当前使用的浏览器的索引
+	browserLocker   sync.Mutex           // 浏览器的锁
+	httpProxyIndex  int                  // 当前使用的 http 代理的索引
+	httpProxyLocker sync.Mutex           // http 代理的锁
+	LbHttpUrl       string               // 负载均衡的 http proxy url
+	LBPort          int                  //负载均衡 http 端口
+	proxyInfos      []*XrayPoolProxyInfo // XrayPool 中的代理信息
 }
 
 // NewMultiBrowser 面向与爬虫的时候使用 Browser
@@ -69,7 +69,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 		log:          browserOptions.Log,
 		rodOptions:   browserOptions,
 		multiBrowser: make([]*rod.Browser, 0),
-		proxyInfos:   make([]XrayPoolProxyInfo, 0),
+		proxyInfos:   make([]*XrayPoolProxyInfo, 0),
 	}
 
 	for index, result := range proxyResult.OpenResultList {
@@ -84,7 +84,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 			lastAccessTime:  0,
 			accessTimeLines: make([]int64, 0),
 		}
-		b.proxyInfos = append(b.proxyInfos, tmpProxyInfos)
+		b.proxyInfos = append(b.proxyInfos, &tmpProxyInfos)
 	}
 	b.LBPort = proxyResult.LBPort
 
@@ -125,7 +125,7 @@ func (b *Browser) GetLBBrowser() *rod.Browser {
 }
 
 // GetOneProxyInfo 轮询获取一个代理实例
-func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
+func (b *Browser) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 
 	b.httpProxyLocker.Lock()
 	nowUnixTime := time.Now().Unix()
@@ -142,7 +142,7 @@ func (b *Browser) GetOneProxyInfo() (XrayPoolProxyInfo, error) {
 	}()
 
 	if len(b.proxyInfos) < 1 {
-		return XrayPoolProxyInfo{}, ErrProxyInfosIsEmpty
+		return nil, ErrProxyInfosIsEmpty
 	}
 
 	if b.proxyInfos[b.httpProxyIndex].skipAccessTime > nowUnixTime {
