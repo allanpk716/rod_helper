@@ -5,23 +5,32 @@ import (
 )
 
 type BrowserOptions struct {
-	Log                  *logrus.Logger // 日志
-	loadAdblock          bool           // 是否加载 adblock
-	loadPic              bool           // 是否加载图片
-	preLoadUrl           string         // 预加载的url
-	xrayPoolUrl          string         // xray pool url
-	xrayPoolPort         string         // xray pool port
-	browserInstanceCount int            // 浏览器最大的实例，xrayPoolUrl 有值的时候生效，用于爬虫。因为每启动一个实例就试用一个固定的代理，所以需要多个才行
-	browserFPath         string         // 浏览器的路径
+	Log                  *logrus.Logger     // 日志
+	loadAdblock          bool               // 是否加载 adblock
+	loadPic              bool               // 是否加载图片
+	preLoadUrl           string             // 预加载的url
+	xrayPoolUrl          string             // xray pool url
+	xrayPoolPort         string             // xray pool port
+	browserInstanceCount int                // 浏览器最大的实例，xrayPoolUrl 有值的时候生效，用于爬虫。因为每启动一个实例就试用一个固定的代理，所以需要多个才行
+	browserFPath         string             // 浏览器的路径
+	timeConfig           TimeConfig         // 时间设置
+	successWordsConfig   SuccessWordsConfig // 成功的关键词
+	failWordsConfig      FailWordsConfig    // 失败的关键词
 }
 
-func NewBrowserOptions(log *logrus.Logger, loadAdblock bool, loadPic bool) *BrowserOptions {
-	return &BrowserOptions{Log: log, loadAdblock: loadAdblock, loadPic: loadPic, browserInstanceCount: 1}
+func NewBrowserOptions(log *logrus.Logger, loadAdblock bool, loadPic bool, timeConfig TimeConfig) *BrowserOptions {
+	return &BrowserOptions{
+		Log:                  log,
+		loadAdblock:          loadAdblock,
+		loadPic:              loadPic,
+		browserInstanceCount: 1,
+		timeConfig:           timeConfig}
 }
 
 func (r *BrowserOptions) SetPreLoadUrl(url string) {
 	r.preLoadUrl = url
 }
+
 func (r *BrowserOptions) PreLoadUrl() string {
 	return r.preLoadUrl
 }

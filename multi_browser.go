@@ -2,9 +2,9 @@ package rod_helper
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"sync"
@@ -80,6 +80,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 			ProtoModel:     result.ProtoModel,
 			HttpUrl:        httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.HttpPort),
 			SocksUrl:       socksPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(result.SocksPort),
+			FirTimeAccess:  true,
 			skipAccessTime: 0,
 			lastAccessTime: 0,
 		}
@@ -123,7 +124,7 @@ func (b *Browser) GetLBBrowser() *rod.Browser {
 	return b.multiBrowser[b.browserIndex]
 }
 
-// GetOneProxyInfo 轮询获取一个代理实例
+// GetOneProxyInfo 轮询获取一个代理实例，直接给出这个代理的信息，不会考虑访问的频率问题
 func (b *Browser) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 
 	b.httpProxyLocker.Lock()
@@ -151,7 +152,7 @@ func (b *Browser) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 	return b.proxyInfos[b.httpProxyIndex], nil
 }
 
-// SetProxyNodeSkipByTime 设置这个节点，等待多少秒之后才可以被再次使用，仅仅针对 GetOneProxyInfo 有效
+// SetProxyNodeSkipByTime 设置这个节点，等待多少秒之后才可以被再次使用，仅仅针对 GetOneProxyInfo、GetProxyInfoSync 有效
 func (b *Browser) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error {
 	b.httpProxyLocker.Lock()
 	defer func() {
@@ -167,6 +168,97 @@ func (b *Browser) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error 
 	}
 
 	b.proxyInfos[index].skipAccessTime = targetSkipTime
+	return nil
+}
+
+// GetProxyInfoSync 根据 TimeConfig 设置，寻找一个可用的节点。可以并发用，但是当前获取的节点，会根据访问时间，可能会有 sleep 阻塞等待
+func (b *Browser) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
+
+	var outProxyInfo *XrayPoolProxyInfo
+	var err error
+	for {
+		// 获取下一个代理的信息
+		outProxyInfo, err = b.GetOneProxyInfo()
+		if err != nil {
+			// 这里的错误要区分一种，就是跳过的节点的情况
+			if errors.Is(err, ErrSkipAccessTime) {
+				// 可以接收的错误，等待循环
+				b.log.Debugln("Skip Access Time Proxy:", outProxyInfo.Name, outProxyInfo.Index, baseUrl)
+				<-time.After(time.Microsecond * 100)
+				continue
+			}
+			return nil, errors.Errorf("browser.GetOneProxyInfo error: %s", err.Error())
+		}
+
+		if outProxyInfo.FirTimeAccess == true {
+			// 第一次访问，不需要等待
+			outProxyInfo.FirTimeAccess = false
+			return outProxyInfo, nil
+		}
+
+		timeT := time.Unix(outProxyInfo.GetLastAccessTime(), 0)
+		dv := time.Now().Unix() - outProxyInfo.GetLastAccessTime()
+		b.log.Infoln("Now Proxy:", outProxyInfo.Name, outProxyInfo.Index, timeT.Format("2006-01-02 15:04:05"), baseUrl)
+		if dv > 0 && dv <= int64(b.rodOptions.timeConfig.OneProxyNodeUseInternalMinTime) {
+			// 如果没有超过，那么就等待一段时间，然后再去获取
+			// 休眠一下
+			sleepTime := b.rodOptions.timeConfig.GetOneProxyNodeUseInternalTime(int32(dv))
+			b.log.Infoln("Will Sleep", sleepTime.Seconds(), "s")
+			<-time.After(sleepTime)
+		} else if dv < 0 {
+			// 理论上就不该到这个分支
+			b.log.Warningln(outProxyInfo.Name, outProxyInfo.Index, "LastAccessTime is bigger than now time")
+		}
+
+		return outProxyInfo, nil
+	}
+}
+
+// HasSuccessWord 是否包含成功的关键词，开启这个设置才有效
+func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) error {
+
+	pageContent, err := page.HTML()
+	if err != nil {
+		return err
+	}
+	if b.rodOptions.successWordsConfig.Enable == true {
+		// 检查是否包含成功关键词
+		contained, _ := ContainedWords(pageContent, b.rodOptions.successWordsConfig.Words)
+		if contained == false {
+
+			// 如果没有包含成功的关键词，那么给予惩罚时间，这样就会暂时跳过这个代理节点
+			err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
+			if err != nil {
+				return err
+			}
+
+			return errors.New(fmt.Sprintf("pageContent not contained success words"))
+		}
+	}
+
+	return nil
+}
+
+// HasFailedWord 是否包含失败关键词
+func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) error {
+	pageContent, err := page.HTML()
+	if err != nil {
+		return err
+	}
+	if b.rodOptions.failWordsConfig.Enable == true {
+		// 检查是否包含失败关键词
+		contained, index := ContainedWords(pageContent, b.rodOptions.failWordsConfig.Words)
+		if contained == true {
+			// 如果包含了失败的关键词，那么就需要统计出来，到底最近访问这个节点的频率是如何的，提供给人来判断调整
+			err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
+			if err != nil {
+				return err
+			}
+			return errors.New(fmt.Sprintf("pageContent contained failed words, index: %s",
+				b.rodOptions.failWordsConfig.Words[index]))
+		}
+	}
+
 	return nil
 }
 
@@ -225,6 +317,7 @@ type XrayPoolProxyInfo struct {
 	ProtoModel     string `json:"proto_model"`
 	SocksUrl       string `json:"socks_url"`
 	HttpUrl        string `json:"http_url"`
+	FirTimeAccess  bool   `json:"first_time_access"` // 这个节点第一次被访问
 	skipAccessTime int64  // 如果当前时间大于这个时间，这个节点才可以被访问
 	lastAccessTime int64  // 最后的访问时间
 }
