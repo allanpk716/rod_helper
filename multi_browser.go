@@ -151,23 +151,6 @@ func (b *Browser) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 	return b.proxyInfos[b.httpProxyIndex], nil
 }
 
-func (b *Browser) ClearAccessTimeLines(index int) error {
-	b.httpProxyLocker.Lock()
-	defer func() {
-		b.httpProxyLocker.Unlock()
-	}()
-
-	if len(b.proxyInfos) < 1 {
-		return ErrProxyInfosIsEmpty
-	}
-
-	if index >= len(b.proxyInfos) {
-		return ErrIndexIsOutOfRange
-	}
-
-	return nil
-}
-
 // SetProxyNodeSkipByTime 设置这个节点，等待多少秒之后才可以被再次使用，仅仅针对 GetOneProxyInfo 有效
 func (b *Browser) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error {
 	b.httpProxyLocker.Lock()
