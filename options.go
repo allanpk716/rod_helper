@@ -77,3 +77,11 @@ func (r *BrowserOptions) BrowserFPath() string {
 func (r *BrowserOptions) SetBrowserFPath(path string) {
 	r.browserFPath = path
 }
+
+func (r *BrowserOptions) SetSuccessWordsConfig(successWordsConfig SuccessWordsConfig) {
+	r.successWordsConfig = successWordsConfig
+}
+
+func (r *BrowserOptions) SetFailWordsConfig(failWordsConfig FailWordsConfig) {
+	r.failWordsConfig = failWordsConfig
+}
