@@ -41,3 +41,7 @@ require (
 	golang.org/x/sys v0.0.0-20210423082822-04245dca01da // indirect
 	golang.org/x/text v0.3.7 // indirect
 )
+
+replace (
+	github.com/go-rod/rod => github.com/allanpk716/rod v0.0.0-20221109074740-6305c86390cb
+)
