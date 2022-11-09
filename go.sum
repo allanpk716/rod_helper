@@ -28,8 +28,6 @@ github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuy
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/allanpk716/fake-useragent v0.2.1 h1:5EurHovAMGNwMZNbZ2cFOH8HsLdHwopnnKWCsV3PtNI=
 github.com/allanpk716/fake-useragent v0.2.1/go.mod h1:U3tmrxBYvSPeQKQ/9x59CXJPkHbU4x4eXw3ji5TDhPk=
-github.com/allanpk716/rod v0.0.1-test h1:qiG1B6FYyJzTWOpLZAfA5JGgz7s62dbtzFEgboHkaC0=
-github.com/allanpk716/rod v0.0.1-test/go.mod h1:GZDtmEs6RpF6kBRYpGCZXxXlKNneKVPiKOjaMbmVVjE=
 github.com/andybalholm/brotli v1.0.1/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
 github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY3JY=
 github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
@@ -78,6 +76,8 @@ github.com/go-logfmt/logfmt v0.3.0/go.mod h1:Qt1PoO58o5twSAckw1HlFXLmHsOX5/0LbT9
 github.com/go-logfmt/logfmt v0.4.0/go.mod h1:3RMwSq7FuexP4Kalkev3ejPJsZTpXXBr9+V4qmtdjCk=
 github.com/go-resty/resty/v2 v2.7.0 h1:me+K9p3uhSmXtrBZ4k9jcEAfJmuC8IivWHwaLZwPrFY=
 github.com/go-resty/resty/v2 v2.7.0/go.mod h1:9PWDzw47qPphMRFfhsyk0NnSgvluHcljSMVIq3w7q0I=
+github.com/go-rod/rod v0.111.0 h1:aMNNdz10GYPYec9z1WsFqwAdRYVsuufVTOrah7whG3I=
+github.com/go-rod/rod v0.111.0/go.mod h1:GZDtmEs6RpF6kBRYpGCZXxXlKNneKVPiKOjaMbmVVjE=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=

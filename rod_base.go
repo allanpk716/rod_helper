@@ -160,7 +160,7 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 			nowClient = nil
 		}()
 
-		err := ctx.LoadResponse(nowClient, false)
+		err := ctx.LoadResponse(nowClient, true)
 		if err != nil {
 			return
 		}
@@ -176,20 +176,20 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 		}
 		return nil, nil, err
 	}
-	//var e proto.NetworkResponseReceived
-	//wait := page.WaitEvent(&e)
+	var e proto.NetworkResponseReceived
+	wait := page.WaitEvent(&e)
 	err = rod.Try(func() {
 		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
-		//wait()
+		wait()
 	})
 	if err != nil {
-		return page, nil, err
+		return page, &e, err
 	}
 	if page == nil {
 		return nil, nil, errors.New("page is nil")
 	}
 
-	return page, nil, nil
+	return page, &e, nil
 }
 
 func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []string) (string, error) {
