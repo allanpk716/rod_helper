@@ -148,7 +148,7 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 				Proxy:           http.ProxyURL(px),
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			},
-		}, true)
+		}, false)
 		if err != nil {
 			return
 		}
