@@ -1,20 +1,17 @@
 package rod_helper
 
 import (
-	"crypto/tls"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/pkg/errors"
-	"net/http"
-	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 )
 
-func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool, preLoadUrl ...string) (*rod.Browser, error) {
+func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool) (*rod.Browser, error) {
 
 	var err error
 	// 随机的 rod 子文件夹名称
@@ -55,36 +52,6 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool
 	if err != nil {
 		return nil, err
 	}
-	// 如果加载了插件，那么就需要进行一定地耗时操作，等待其第一次的加载完成
-	if loadAdblock == true {
-
-		if httpProxyURL == "" {
-			page, _, _ := NewPageNavigate(browser, noProxyUseUrl, 15*time.Second)
-			if page != nil {
-				_ = page.Close()
-			}
-		} else {
-			page, _, _ := NewPageNavigateWithProxy(browser, httpProxyURL, useProxyUrl, 15*time.Second)
-			if page != nil {
-				_ = page.Close()
-			}
-		}
-	}
-
-	if len(preLoadUrl) > 0 && preLoadUrl[0] != "" {
-
-		if httpProxyURL == "" {
-			page, _, _ := NewPageNavigate(browser, preLoadUrl[0], 15*time.Second)
-			if page != nil {
-				_ = page.Close()
-			}
-		} else {
-			page, _, _ := NewPageNavigateWithProxy(browser, httpProxyURL, preLoadUrl[0], 15*time.Second)
-			if page != nil {
-				_ = page.Close()
-			}
-		}
-	}
 
 	return browser, nil
 }
@@ -99,16 +66,6 @@ func NewPageNavigate(browser *rod.Browser, desURL string, timeOut time.Duration)
 	return PageNavigate(page, desURL, timeOut)
 }
 
-func NewPageNavigateWithProxy(browser *rod.Browser, proxyUrl string, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
-
-	page, err := newPage(browser)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return PageNavigateWithProxy(page, proxyUrl, desURL, timeOut)
-}
-
 func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
 
 	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
@@ -117,62 +74,6 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	if err != nil {
 		if page != nil {
 			_ = page.Close()
-		}
-		return nil, nil, err
-	}
-	var e proto.NetworkResponseReceived
-	wait := page.WaitEvent(&e)
-	err = rod.Try(func() {
-		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
-		wait()
-	})
-	if err != nil {
-		return page, &e, err
-	}
-	if page == nil {
-		return nil, nil, errors.New("page is nil")
-	}
-
-	return page, &e, nil
-}
-
-func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
-
-	router := page.HijackRequests()
-	defer router.Stop()
-
-	router.MustAdd("*", func(ctx *rod.Hijack) {
-		px, _ := url.Parse(proxyUrl)
-		nowTransport := &http.Transport{
-			Proxy:           http.ProxyURL(px),
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		defer func() {
-			nowTransport.CloseIdleConnections()
-			nowTransport = nil
-		}()
-
-		nowClient := &http.Client{
-			Transport: nowTransport,
-		}
-		defer func() {
-			nowClient.CloseIdleConnections()
-			nowClient = nil
-		}()
-
-		err := ctx.LoadResponse(nowClient, true)
-		if err != nil {
-			return
-		}
-	})
-	go router.Run()
-
-	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
-		UserAgent: RandomUserAgent(true),
-	})
-	if err != nil {
-		if page != nil {
-			page.Close()
 		}
 		return nil, nil, err
 	}

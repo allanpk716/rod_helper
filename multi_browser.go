@@ -1,11 +1,14 @@
 package rod_helper
 
 import (
+	"crypto/tls"
 	_ "embed"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/pkg/errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -16,16 +19,20 @@ import (
 )
 
 type Browser struct {
-	log             *logrus.Logger
-	rodOptions      *BrowserOptions      // 参数
-	multiBrowser    []*rod.Browser       // 多浏览器实例
-	browserIndex    int                  // 当前使用的浏览器的索引
-	browserLocker   sync.Mutex           // 浏览器的锁
-	httpProxyIndex  int                  // 当前使用的 http 代理的索引
-	httpProxyLocker sync.Mutex           // http 代理的锁
-	LbHttpUrl       string               // 负载均衡的 http proxy url
-	LBPort          int                  //负载均衡 http 端口
-	proxyInfos      []*XrayPoolProxyInfo // XrayPool 中的代理信息
+	log                  *logrus.Logger
+	rodOptions           *BrowserOptions      // 参数
+	multiBrowser         []*rod.Browser       // 多浏览器实例
+	browserIndex         int                  // 当前使用的浏览器的索引
+	browserLocker        sync.Mutex           // 浏览器的锁
+	httpProxyIndex       int                  // 当前使用的 http 代理的索引
+	httpProxyLocker      sync.Mutex           // http 代理的锁
+	LbHttpUrl            string               // 负载均衡的 http proxy url
+	LBPort               int                  //负载均衡 http 端口
+	proxyInfos           []*XrayPoolProxyInfo // XrayPool 中的代理信息
+	nowTransports        []*http.Transport
+	nowTransportIndex    int
+	nowTransportsLock    sync.Mutex
+	doOnceHijackRequests sync.Once
 }
 
 // NewMultiBrowser 面向与爬虫的时候使用 Browser
@@ -66,10 +73,11 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 	}
 
 	b := &Browser{
-		log:          browserOptions.Log,
-		rodOptions:   browserOptions,
-		multiBrowser: make([]*rod.Browser, 0),
-		proxyInfos:   make([]*XrayPoolProxyInfo, 0),
+		log:               browserOptions.Log,
+		rodOptions:        browserOptions,
+		multiBrowser:      make([]*rod.Browser, 0),
+		proxyInfos:        make([]*XrayPoolProxyInfo, 0),
+		nowTransportIndex: 0,
 	}
 
 	for index, result := range proxyResult.OpenResultList {
@@ -286,6 +294,93 @@ func (b *Browser) NewBrowser() (*rod.Browser, error) {
 	}
 
 	return oneBrowser, nil
+}
+
+func (b *Browser) NewPageNavigateWithProxy(proxyUrl string, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
+
+	page, err := newPage(b.GetLBBrowser())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return b.PageNavigateWithProxy(page, proxyUrl, desURL, timeOut)
+}
+
+func (b *Browser) PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
+
+	router := page.HijackRequests()
+	defer router.Stop()
+
+	router.MustAdd("*", func(ctx *rod.Hijack) {
+
+		nowClient := &http.Client{
+			Transport: b.getOneTransport(proxyUrl),
+		}
+		defer func() {
+			nowClient = nil
+		}()
+
+		err := ctx.LoadResponse(nowClient, true)
+		if err != nil {
+			return
+		}
+	})
+	go router.Run()
+
+	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
+		UserAgent: RandomUserAgent(true),
+	})
+	if err != nil {
+		if page != nil {
+			page.Close()
+		}
+		return nil, nil, err
+	}
+	var e proto.NetworkResponseReceived
+	wait := page.WaitEvent(&e)
+	err = rod.Try(func() {
+		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
+		wait()
+	})
+	if err != nil {
+		return page, &e, err
+	}
+	if page == nil {
+		return nil, nil, errors.New("page is nil")
+	}
+
+	return page, &e, nil
+}
+
+func (b *Browser) getOneTransport(proxyUrl string) *http.Transport {
+
+	b.nowTransportsLock.Lock()
+	defer func() {
+		b.nowTransportIndex++
+		b.nowTransportsLock.Unlock()
+	}()
+
+	b.doOnceHijackRequests.Do(func() {
+		if b.nowTransports == nil {
+			b.nowTransports = make([]*http.Transport, 0)
+			for i := 0; i < b.rodOptions.pageInstanceCount; i++ {
+				b.nowTransports = append(b.nowTransports, &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				})
+			}
+		}
+	})
+
+	if b.nowTransportIndex >= b.rodOptions.pageInstanceCount {
+		b.nowTransportIndex = 0
+	}
+
+	px, _ := url.Parse(proxyUrl)
+	b.nowTransports[b.nowTransportIndex].Proxy = http.ProxyURL(px)
+
+	return b.nowTransports[b.nowTransportIndex]
 }
 
 func (b *Browser) Close() {
