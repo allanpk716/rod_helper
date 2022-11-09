@@ -143,12 +143,24 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 
 	router.MustAdd("*", func(ctx *rod.Hijack) {
 		px, _ := url.Parse(proxyUrl)
-		err := ctx.LoadResponse(&http.Client{
-			Transport: &http.Transport{
-				Proxy:           http.ProxyURL(px),
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		}, true)
+		nowTransport := &http.Transport{
+			Proxy:           http.ProxyURL(px),
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		defer func() {
+			nowTransport.CloseIdleConnections()
+			nowTransport = nil
+		}()
+
+		nowClient := &http.Client{
+			Transport: nowTransport,
+		}
+		defer func() {
+			nowClient.CloseIdleConnections()
+			nowClient = nil
+		}()
+
+		err := ctx.LoadResponse(nowClient, true)
 		if err != nil {
 			return
 		}
