@@ -160,7 +160,7 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 			nowClient = nil
 		}()
 
-		err := ctx.LoadResponse(nowClient, true)
+		err := ctx.LoadResponse(nowClient, false)
 		if err != nil {
 			return
 		}
