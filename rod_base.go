@@ -57,24 +57,12 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool
 	return browser, nil
 }
 
-func NewPageNavigate(browser *rod.Browser, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
-
-	page, err := newPage(browser)
+func NewPage(browser *rod.Browser) (*rod.Page, error) {
+	page, err := browser.Page(proto.TargetCreateTarget{URL: ""})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	return PageNavigate(page, desURL, timeOut)
-}
-
-func NewPageNavigateWithProxy(browser *rod.Browser, httpClient *http.Client, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
-
-	page, err := newPage(browser)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return PageNavigateWithProxy(page, httpClient, desURL, timeOut)
+	return page, err
 }
 
 func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
@@ -104,45 +92,45 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	return page, &e, nil
 }
 
-func PageNavigateWithProxy(page *rod.Page, httpClient *http.Client, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
-
+// NewPageHijackRouter 需要手动启动 休要开启协程 Run() 和 释放 Stop
+func NewPageHijackRouter(page *rod.Page, httpClient *http.Client) *rod.HijackRouter {
 	router := page.HijackRequests()
-	defer router.Stop()
-
-	httpClient.Timeout = timeOut
-
 	router.MustAdd("*", func(ctx *rod.Hijack) {
-
 		err := ctx.LoadResponse(httpClient, true)
 		if err != nil {
 			return
 		}
 	})
-	go router.Run()
+	return router
+}
 
-	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
-		UserAgent: RandomUserAgent(true),
-	})
-	if err != nil {
-		if page != nil {
-			page.Close()
+// ContainedWords 返回的页面是否包含关键词
+func ContainedWords(pageContent string, failedWords []string) (bool, int) {
+
+	for i, word := range failedWords {
+
+		if strings.Contains(strings.ToLower(pageContent), word) == true {
+			return true, i
 		}
-		return nil, nil, err
 	}
-	var e proto.NetworkResponseReceived
-	wait := page.WaitEvent(&e)
-	err = rod.Try(func() {
-		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
-		wait()
-	})
-	if err != nil {
-		return page, &e, err
-	}
-	if page == nil {
-		return nil, nil, errors.New("page is nil")
+	return false, -1
+}
+
+// ContainedWordsRegex 返回的页面是否包含关键词正则表达式
+func ContainedWordsRegex(pageContent string, failedWordsRegex []string) (bool, int) {
+
+	for i, wordRegex := range failedWordsRegex {
+
+		failedRegex := regexp.MustCompile(wordRegex)
+		matches := failedRegex.FindAllString(pageContent, -1)
+		if matches == nil || len(matches) == 0 {
+			// 没有找到匹配的内容，那么认为是成功的
+		} else {
+			return true, i
+		}
 	}
 
-	return page, &e, nil
+	return false, -1
 }
 
 func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []string) (string, error) {
@@ -179,43 +167,6 @@ func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []stri
 	}
 
 	return "", errors.New("get public ip failed")
-}
-
-// ContainedWords 返回的页面是否包含关键词
-func ContainedWords(pageContent string, failedWords []string) (bool, int) {
-
-	for i, word := range failedWords {
-
-		if strings.Contains(strings.ToLower(pageContent), word) == true {
-			return true, i
-		}
-	}
-	return false, -1
-}
-
-// ContainedWordsRegex 返回的页面是否包含关键词正则表达式
-func ContainedWordsRegex(pageContent string, failedWordsRegex []string) (bool, int) {
-
-	for i, wordRegex := range failedWordsRegex {
-
-		failedRegex := regexp.MustCompile(wordRegex)
-		matches := failedRegex.FindAllString(pageContent, -1)
-		if matches == nil || len(matches) == 0 {
-			// 没有找到匹配的内容，那么认为是成功的
-		} else {
-			return true, i
-		}
-	}
-
-	return false, -1
-}
-
-func newPage(browser *rod.Browser) (*rod.Page, error) {
-	page, err := browser.Page(proto.TargetCreateTarget{URL: ""})
-	if err != nil {
-		return nil, err
-	}
-	return page, err
 }
 
 const regMatchIP = `(?m)((25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))).){3}(25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))`
