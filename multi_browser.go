@@ -243,6 +243,14 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, nowProxy
 // HasSuccessWord 是否包含成功的关键词，开启这个设置才有效
 func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, error) {
 
+	// 因为 page.HTML() 会不停的等待查找这个元素，但是因为前面可能已经超时了（且没有返回 html 结构），那么就卡住了
+	has, _, err := page.Has("html")
+	if err != nil {
+		return false, err
+	}
+	if has == false {
+		return false, nil
+	}
 	pageContent, err := page.HTML()
 	if err != nil {
 		return false, err
@@ -267,6 +275,16 @@ func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo
 
 // HasFailedWord 是否包含失败关键词
 func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, string, error) {
+
+	// 因为 page.HTML() 会不停的等待查找这个元素，但是因为前面可能已经超时了（且没有返回 html 结构），那么就卡住了
+	has, _, err := page.Has("html")
+	if err != nil {
+		return false, "", err
+	}
+	if has == false {
+		return false, "", nil
+	}
+
 	pageContent, err := page.HTML()
 	if err != nil {
 		return false, "", err
