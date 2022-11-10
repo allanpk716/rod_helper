@@ -2,12 +2,12 @@ package rod_helper
 
 import (
 	"crypto/tls"
+	"github.com/go-resty/resty/v2"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/pkg/errors"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -141,26 +141,30 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 	router := page.HijackRequests()
 	defer router.Stop()
 
+	UserAgent := RandomUserAgent(true)
+	httpClient := resty.New().SetTransport(&http.Transport{
+		DisableKeepAlives:   true,
+		MaxIdleConns:        1000,
+		MaxIdleConnsPerHost: 1000,
+	})
+	httpClient.SetTimeout(timeOut)
+	// 设置 Header
+	httpClient.SetHeaders(map[string]string{
+		"Content-Type": "application/json",
+		"User-Agent":   UserAgent,
+	})
+	// 不要求安全链接
+	httpClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	// 设置代理
+	if proxyUrl != "" {
+		httpClient.SetProxy(proxyUrl)
+	} else {
+		httpClient.RemoveProxy()
+	}
+
 	router.MustAdd("*", func(ctx *rod.Hijack) {
-		px, _ := url.Parse(proxyUrl)
-		nowTransport := &http.Transport{
-			Proxy:           http.ProxyURL(px),
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		defer func() {
-			nowTransport.CloseIdleConnections()
-			nowTransport = nil
-		}()
 
-		nowClient := &http.Client{
-			Transport: nowTransport,
-		}
-		defer func() {
-			nowClient.CloseIdleConnections()
-			nowClient = nil
-		}()
-
-		err := ctx.LoadResponse(nowClient, true)
+		err := ctx.LoadResponse(httpClient.GetClient(), true)
 		if err != nil {
 			return
 		}
@@ -168,7 +172,7 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 	go router.Run()
 
 	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
-		UserAgent: RandomUserAgent(true),
+		UserAgent: UserAgent,
 	})
 	if err != nil {
 		if page != nil {
