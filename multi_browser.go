@@ -26,6 +26,7 @@ type Browser struct {
 	LbHttpUrl       string               // 负载均衡的 http proxy url
 	LBPort          int                  //负载均衡 http 端口
 	proxyInfos      []*XrayPoolProxyInfo // XrayPool 中的代理信息
+	httpClient      []*resty.Client      // http 客户端，有多少个代理，就是有多少个客户端
 }
 
 // NewMultiBrowser 面向与爬虫的时候使用 Browser
@@ -74,6 +75,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 
 	for index, result := range proxyResult.OpenResultList {
 
+		// 单个节点的信息
 		tmpProxyInfos := XrayPoolProxyInfo{
 			Index:          index,
 			Name:           result.Name,
@@ -85,6 +87,8 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 			lastAccessTime: 0,
 		}
 		b.proxyInfos = append(b.proxyInfos, &tmpProxyInfos)
+		// 对应一个 http client
+		b.httpClient = append(b.httpClient, NewHttpClient(tmpProxyInfos.HttpUrl, 15*time.Second))
 	}
 	b.LBPort = proxyResult.LBPort
 
@@ -150,6 +154,11 @@ func (b *Browser) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 	}
 
 	return b.proxyInfos[b.httpProxyIndex], nil
+}
+
+// GetHttpClient 配合 GetOneProxyInfo 使用，获取到一个 HttpClient
+func (b *Browser) GetHttpClient(index int) *resty.Client {
+	return b.httpClient[index]
 }
 
 // SetProxyNodeSkipByTime 设置这个节点，等待多少秒之后才可以被再次使用，仅仅针对 GetOneProxyInfo、GetProxyInfoSync 有效

@@ -1,8 +1,6 @@
 package rod_helper
 
 import (
-	"crypto/tls"
-	"github.com/go-resty/resty/v2"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
@@ -14,7 +12,7 @@ import (
 	"time"
 )
 
-func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool, preLoadUrl ...string) (*rod.Browser, error) {
+func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool) (*rod.Browser, error) {
 
 	var err error
 	// 随机的 rod 子文件夹名称
@@ -56,21 +54,6 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool
 		return nil, err
 	}
 
-	if len(preLoadUrl) > 0 && preLoadUrl[0] != "" {
-
-		if httpProxyURL == "" {
-			page, _, _ := NewPageNavigate(browser, preLoadUrl[0], 15*time.Second)
-			if page != nil {
-				_ = page.Close()
-			}
-		} else {
-			page, _, _ := NewPageNavigateWithProxy(browser, httpProxyURL, preLoadUrl[0], 15*time.Second)
-			if page != nil {
-				_ = page.Close()
-			}
-		}
-	}
-
 	return browser, nil
 }
 
@@ -84,14 +67,14 @@ func NewPageNavigate(browser *rod.Browser, desURL string, timeOut time.Duration)
 	return PageNavigate(page, desURL, timeOut)
 }
 
-func NewPageNavigateWithProxy(browser *rod.Browser, proxyUrl string, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
+func NewPageNavigateWithProxy(browser *rod.Browser, httpClient *http.Client, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
 
 	page, err := newPage(browser)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return PageNavigateWithProxy(page, proxyUrl, desURL, timeOut)
+	return PageNavigateWithProxy(page, httpClient, desURL, timeOut)
 }
 
 func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
@@ -121,35 +104,16 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	return page, &e, nil
 }
 
-func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
+func PageNavigateWithProxy(page *rod.Page, httpClient *http.Client, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
 
 	router := page.HijackRequests()
 	defer router.Stop()
 
-	UserAgent := RandomUserAgent(true)
-	httpClient := resty.New().SetTransport(&http.Transport{
-		DisableKeepAlives:   true,
-		MaxIdleConns:        1000,
-		MaxIdleConnsPerHost: 1000,
-	})
-	httpClient.SetTimeout(timeOut)
-	// 设置 Header
-	httpClient.SetHeaders(map[string]string{
-		"Content-Type": "application/json",
-		"User-Agent":   UserAgent,
-	})
-	// 不要求安全链接
-	httpClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
-	// 设置代理
-	if proxyUrl != "" {
-		httpClient.SetProxy(proxyUrl)
-	} else {
-		httpClient.RemoveProxy()
-	}
+	httpClient.Timeout = timeOut
 
 	router.MustAdd("*", func(ctx *rod.Hijack) {
 
-		err := ctx.LoadResponse(httpClient.GetClient(), true)
+		err := ctx.LoadResponse(httpClient, true)
 		if err != nil {
 			return
 		}
@@ -157,7 +121,7 @@ func PageNavigateWithProxy(page *rod.Page, proxyUrl string, desURL string, timeO
 	go router.Run()
 
 	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
-		UserAgent: UserAgent,
+		UserAgent: RandomUserAgent(true),
 	})
 	if err != nil {
 		if page != nil {
