@@ -282,7 +282,8 @@ func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo)
 		return false, "", err
 	}
 	if has == false {
-		return false, "", nil
+		// 需要再次请求
+		return true, "", nil
 	}
 
 	pageContent, err := page.HTML()
