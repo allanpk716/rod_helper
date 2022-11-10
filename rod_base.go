@@ -93,10 +93,10 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 }
 
 // NewPageHijackRouter 需要手动启动 休要开启协程 Run() 和 释放 Stop
-func NewPageHijackRouter(page *rod.Page, httpClient *http.Client) *rod.HijackRouter {
+func NewPageHijackRouter(page *rod.Page, loadBody bool, httpClient *http.Client) *rod.HijackRouter {
 	router := page.HijackRequests()
 	router.MustAdd("*", func(ctx *rod.Hijack) {
-		err := ctx.LoadResponse(httpClient, true)
+		err := ctx.LoadResponse(httpClient, loadBody)
 		if err != nil {
 			return
 		}
