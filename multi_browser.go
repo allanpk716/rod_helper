@@ -215,11 +215,11 @@ func (b *Browser) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
 }
 
 // HasSuccessWord 是否包含成功的关键词，开启这个设置才有效
-func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) error {
+func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, error) {
 
 	pageContent, err := page.HTML()
 	if err != nil {
-		return err
+		return false, err
 	}
 	if b.rodOptions.successWordsConfig.Enable == true {
 		// 检查是否包含成功关键词
@@ -229,21 +229,21 @@ func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo
 			// 如果没有包含成功的关键词，那么给予惩罚时间，这样就会暂时跳过这个代理节点
 			err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
 			if err != nil {
-				return err
+				return false, err
 			}
 
-			return errors.New(fmt.Sprintf("pageContent not contained success words"))
+			return false, nil
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 // HasFailedWord 是否包含失败关键词
-func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) error {
+func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, string, error) {
 	pageContent, err := page.HTML()
 	if err != nil {
-		return err
+		return false, "", err
 	}
 	if b.rodOptions.failWordsConfig.Enable == true {
 		// 检查是否包含失败关键词
@@ -252,14 +252,13 @@ func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo)
 			// 如果包含了失败的关键词，那么就需要统计出来，到底最近访问这个节点的频率是如何的，提供给人来判断调整
 			err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
 			if err != nil {
-				return err
+				return false, "", err
 			}
-			return errors.New(fmt.Sprintf("pageContent contained failed words, index: %s",
-				b.rodOptions.failWordsConfig.Words[index]))
+			return true, b.rodOptions.failWordsConfig.Words[index], nil
 		}
 	}
 
-	return nil
+	return false, "", nil
 }
 
 // NewBrowser 每次新建一个 Browser ，使用 HttpProxy 列表中的一个作为代理
