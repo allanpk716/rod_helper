@@ -82,6 +82,14 @@ func (r *BrowserOptions) SetSuccessWordsConfig(successWordsConfig SuccessWordsCo
 	r.successWordsConfig = successWordsConfig
 }
 
+func (r *BrowserOptions) GetSuccessWordsConfig() SuccessWordsConfig {
+	return r.successWordsConfig
+}
+
 func (r *BrowserOptions) SetFailWordsConfig(failWordsConfig FailWordsConfig) {
 	r.failWordsConfig = failWordsConfig
+}
+
+func (r *BrowserOptions) GetFailWordsConfig() FailWordsConfig {
+	return r.failWordsConfig
 }
