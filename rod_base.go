@@ -55,21 +55,6 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool
 	if err != nil {
 		return nil, err
 	}
-	// 如果加载了插件，那么就需要进行一定地耗时操作，等待其第一次的加载完成
-	if loadAdblock == true {
-
-		if httpProxyURL == "" {
-			page, _, _ := NewPageNavigate(browser, noProxyUseUrl, 15*time.Second)
-			if page != nil {
-				_ = page.Close()
-			}
-		} else {
-			page, _, _ := NewPageNavigateWithProxy(browser, httpProxyURL, useProxyUrl, 15*time.Second)
-			if page != nil {
-				_ = page.Close()
-			}
-		}
-	}
 
 	if len(preLoadUrl) > 0 && preLoadUrl[0] != "" {
 
@@ -232,14 +217,6 @@ func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []stri
 	return "", errors.New("get public ip failed")
 }
 
-func SetNoProxyUseUrl(url string) {
-	noProxyUseUrl = url
-}
-
-func SetUseProxyUrl(url string) {
-	useProxyUrl = url
-}
-
 // ContainedWords 返回的页面是否包含关键词
 func ContainedWords(pageContent string, failedWords []string) (bool, int) {
 
@@ -280,8 +257,3 @@ func newPage(browser *rod.Browser) (*rod.Page, error) {
 const regMatchIP = `(?m)((25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))).){3}(25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))`
 
 var ReMatchIP = regexp.MustCompile(regMatchIP)
-
-var (
-	noProxyUseUrl = "https://www.163.com"
-	useProxyUrl   = "https://www.yahoo.com"
-)
