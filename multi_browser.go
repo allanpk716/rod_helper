@@ -218,7 +218,7 @@ func (b *Browser) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
 }
 
 // PageStatusCodeCheck 页面状态码检查
-func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, nowProxyInfo *XrayPoolProxyInfo, baseUrl string) (StatusCodeCheck, error) {
+func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, nowProxyInfo *XrayPoolProxyInfo, baseUrl string) (PageCheck, error) {
 
 	if e != nil && e.Response != nil {
 
@@ -250,19 +250,18 @@ func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo
 	if err != nil {
 		return false, err
 	}
-	if b.rodOptions.successWordsConfig.Enable == true {
-		// 检查是否包含成功关键词
-		contained, _ := ContainedWords(pageContent, b.rodOptions.successWordsConfig.Words)
-		if contained == false {
 
-			// 如果没有包含成功的关键词，那么给予惩罚时间，这样就会暂时跳过这个代理节点
-			err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
-			if err != nil {
-				return false, err
-			}
+	// 检查是否包含成功关键词
+	contained, _ := ContainedWords(pageContent, b.rodOptions.successWordsConfig.Words)
+	if contained == false {
 
-			return false, nil
+		// 如果没有包含成功的关键词，那么给予惩罚时间，这样就会暂时跳过这个代理节点
+		err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
+		if err != nil {
+			return false, err
 		}
+
+		return false, nil
 	}
 
 	return true, nil
@@ -275,17 +274,17 @@ func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo)
 	if err != nil {
 		return false, "", err
 	}
-	if b.rodOptions.failWordsConfig.Enable == true {
-		// 检查是否包含失败关键词
-		contained, index := ContainedWords(pageContent, b.rodOptions.failWordsConfig.Words)
-		if contained == true {
-			// 如果包含了失败的关键词，那么就需要统计出来，到底最近访问这个节点的频率是如何的，提供给人来判断调整
-			err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
-			if err != nil {
-				return false, "", err
-			}
-			return true, b.rodOptions.failWordsConfig.Words[index], nil
+
+	// 检查是否包含失败关键词
+	contained, index := ContainedWords(pageContent, b.rodOptions.failWordsConfig.Words)
+	if contained == true {
+		// 如果包含了失败的关键词，那么就需要统计出来，到底最近访问这个节点的频率是如何的，提供给人来判断调整
+		err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
+		if err != nil {
+			return false, "", err
 		}
+		// 找到了错误关键词
+		return true, b.rodOptions.failWordsConfig.Words[index], nil
 	}
 
 	return false, "", nil
@@ -360,10 +359,10 @@ const (
 	socksPrefix = "socks5://"
 )
 
-type StatusCodeCheck int
+type PageCheck int
 
 const (
-	Skip    StatusCodeCheck = iota + 1 // 跳过后续的逻辑，不需要再次访问
-	Repeat                             // 跳过后续的逻辑，但是要求重新访问
-	Success                            // 检查通过，继续后续的逻辑判断
+	Skip    PageCheck = iota + 1 // 跳过后续的逻辑，不需要再次访问
+	Repeat                       // 跳过后续的逻辑，但是要求重新访问
+	Success                      // 检查通过，继续后续的逻辑判断
 )
