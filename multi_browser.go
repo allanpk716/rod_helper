@@ -3,7 +3,9 @@ package rod_helper
 import (
 	_ "embed"
 	"fmt"
+	"github.com/WQGroup/logger"
 	"github.com/go-resty/resty/v2"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
@@ -223,6 +225,29 @@ func (b *Browser) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
 	}
 }
 
+// PageStatusCodeCheck 页面状态码检查
+func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, nowProxyInfo *XrayPoolProxyInfo, baseUrl string) (StatusCodeCheck, error) {
+
+	if e != nil && e.Response != nil {
+
+		if e.Response.Status == 404 || e.Response.Status >= 500 {
+			// 这个页面有问题，跳过后续的逻辑，不再使用其他代理继续处理这个页面
+			logger.Warningln("Skip, Status Code:", e.Response.Status, baseUrl)
+			return Skip, nil
+		} else if e.Response.Status == 403 {
+			// 403，可能是被封了，需要换代理，设置时间惩罚，然后跳过
+			err := errors.Errorf("403, Status Code: %d %s", e.Response.Status, baseUrl)
+			logger.Warningln(err)
+			err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
+			if err != nil {
+				return Repeat, err
+			}
+			return Repeat, err
+		}
+	}
+	return Success, nil
+}
+
 // HasSuccessWord 是否包含成功的关键词，开启这个设置才有效
 func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, error) {
 
@@ -337,4 +362,12 @@ func (x *XrayPoolProxyInfo) GetLastAccessTime() int64 {
 const (
 	httpPrefix  = "http://"
 	socksPrefix = "socks5://"
+)
+
+type StatusCodeCheck int
+
+const (
+	Skip    StatusCodeCheck = iota + 1 // 跳过后续的逻辑，不需要再次访问
+	Repeat                             // 跳过后续的逻辑，但是要求重新访问
+	Success                            // 检查通过，继续后续的逻辑判断
 )
