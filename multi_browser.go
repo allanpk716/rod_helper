@@ -228,29 +228,24 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, nowProxy
 			return Skip, nil
 		} else if e.Response.Status == 403 {
 			// 403，可能是被封了，需要换代理，设置时间惩罚，然后跳过
-			err := errors.Errorf("403, Status Code: %d %s", e.Response.Status, baseUrl)
-			logger.Warningln(err)
-			err = b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
+			logger.Warningln(errors.Errorf("403, Status Code: %d %s", e.Response.Status, baseUrl))
+			err := b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
 			if err != nil {
 				return Repeat, err
 			}
 			return Repeat, err
 		}
+		// 都没踩中，那么就继续下面的逻辑吧
+		return Success, nil
+	} else {
+		// 这个事件收不到，那么就是无法使用 page 获取 HTML 以及查询元素的操作的，会卡住一直等着，所以这里需要设置一下，跳过这个代理
+		return Repeat, nil
 	}
-	return Success, nil
 }
 
-// HasSuccessWord 是否包含成功的关键词，开启这个设置才有效
+// HasSuccessWord 是否包含成功的关键词，开启这个设置才有效，需要提前调用 PageStatusCodeCheck 判断，或者判断 proto.NetworkResponseReceived 的值
 func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, error) {
 
-	// 因为 page.HTML() 会不停的等待查找这个元素，但是因为前面可能已经超时了（且没有返回 html 结构），那么就卡住了
-	has, _, err := page.Has("html")
-	if err != nil {
-		return false, err
-	}
-	if has == false {
-		return false, nil
-	}
 	pageContent, err := page.HTML()
 	if err != nil {
 		return false, err
@@ -273,18 +268,8 @@ func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo
 	return true, nil
 }
 
-// HasFailedWord 是否包含失败关键词
+// HasFailedWord 是否包含失败关键词，开启这个设置才有效，需要提前调用 PageStatusCodeCheck 判断，或者判断 proto.NetworkResponseReceived 的值
 func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, string, error) {
-
-	// 因为 page.HTML() 会不停的等待查找这个元素，但是因为前面可能已经超时了（且没有返回 html 结构），那么就卡住了
-	has, _, err := page.Has("html")
-	if err != nil {
-		return false, "", err
-	}
-	if has == false {
-		// 需要再次请求
-		return true, "", nil
-	}
 
 	pageContent, err := page.HTML()
 	if err != nil {
