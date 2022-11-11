@@ -171,6 +171,24 @@ func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []stri
 	return "", errors.New("get public ip failed")
 }
 
+// HasPageLoaded 通过一个 Element 的 XPath 判断是否页面加载完毕
+func HasPageLoaded(page *rod.Page, targetElementXPath string, timeOut int) (bool, error) {
+
+	for {
+		foundEle, _, _ := page.HasX(targetElementXPath)
+		if foundEle == true {
+			return true, nil
+		}
+		// Timeout check
+		if timeOut < 1 {
+			break
+		}
+		timeOut--
+		time.Sleep(1 * time.Second)
+	}
+	return false, nil
+}
+
 const regMatchIP = `(?m)((25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))).){3}(25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))`
 
 var ReMatchIP = regexp.MustCompile(regMatchIP)
