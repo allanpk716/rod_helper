@@ -81,7 +81,7 @@ func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Pa
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
 	err = rod.Try(func() {
-		page.Timeout(timeOut).MustNavigate(desURL).MustWaitLoad()
+		page.Timeout(timeOut).MustNavigate(desURL)
 		wait()
 	})
 	if err != nil {
