@@ -228,7 +228,7 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, nowProxy
 			return Skip, nil
 		} else if e.Response.Status == 403 {
 			// 403，可能是被封了，需要换代理，设置时间惩罚，然后跳过
-			logger.Warningln(errors.Errorf("403, Status Code: %d %s", e.Response.Status, baseUrl))
+			logger.Warningln(errors.Errorf("403, %s %s", nowProxyInfo.Name, baseUrl))
 			err := b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
 			if err != nil {
 				return Repeat, err
@@ -239,7 +239,7 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, nowProxy
 		return Success, nil
 	} else {
 		// 这个事件收不到，那么就是无法使用 page 获取 HTML 以及查询元素的操作的，会卡住一直等着，所以这里需要设置一下，跳过这个代理
-		logger.Warningln("Skip, Response is nil", baseUrl)
+		logger.Warningln("Skip, Response is nil", nowProxyInfo.Name, baseUrl)
 		return Repeat, nil
 	}
 }
