@@ -2,20 +2,19 @@ package rod_helper
 
 import (
 	"testing"
-	"time"
 )
 
 func TestNewBrowserBase(t *testing.T) {
 
 	httpProxyUrl := "http://127.0.0.1:10809"
-	movieUrl := "https://www.google.com"
+	//movieUrl := "https://www.google.com"
 	b, err := NewBrowserBase("", httpProxyUrl, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, _, err := NewPageNavigateWithProxy(b, httpProxyUrl, movieUrl, 15*time.Second)
+	_, err = NewPage(b.Browser)
 	if err != nil {
-		t.Fatal(err)
+		return
 	}
-	println(page.MustHTML())
+	println(b)
 }
