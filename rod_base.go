@@ -6,13 +6,14 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/pkg/errors"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 )
 
-func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool) (*rod.Browser, error) {
+func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool) (*BrowserInfo, error) {
 
 	var err error
 	// 随机的 rod 子文件夹名称
@@ -51,10 +52,11 @@ func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool
 		browser = rod.New().ControlURL(purl).MustConnect()
 	})
 	if err != nil {
+		_ = os.RemoveAll(nowUserData)
 		return nil, err
 	}
 
-	return browser, nil
+	return NewBrowserInfo(browser, nowUserData), nil
 }
 
 func NewPage(browser *rod.Browser) (*rod.Page, error) {
@@ -172,3 +174,21 @@ func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []stri
 const regMatchIP = `(?m)((25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))).){3}(25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))`
 
 var ReMatchIP = regexp.MustCompile(regMatchIP)
+
+type BrowserInfo struct {
+	Browser     *rod.Browser // 浏览器
+	UserDataDir string       // 这里实例的缓存文件夹
+}
+
+func NewBrowserInfo(browser *rod.Browser, userDataDir string) *BrowserInfo {
+	return &BrowserInfo{Browser: browser, UserDataDir: userDataDir}
+}
+
+func (bi *BrowserInfo) Close() {
+	if bi.Browser != nil {
+		_ = bi.Browser.Close()
+	}
+	if bi.UserDataDir != "" {
+		_ = os.RemoveAll(bi.UserDataDir)
+	}
+}

@@ -20,7 +20,7 @@ import (
 type Browser struct {
 	log             *logrus.Logger
 	rodOptions      *BrowserOptions      // 参数
-	multiBrowser    []*rod.Browser       // 多浏览器实例
+	multiBrowser    []*BrowserInfo       // 多浏览器实例
 	browserIndex    int                  // 当前使用的浏览器的索引
 	browserLocker   sync.Mutex           // 浏览器的锁
 	httpProxyIndex  int                  // 当前使用的 http 代理的索引
@@ -70,7 +70,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 	b := &Browser{
 		log:          browserOptions.Log,
 		rodOptions:   browserOptions,
-		multiBrowser: make([]*rod.Browser, 0),
+		multiBrowser: make([]*BrowserInfo, 0),
 		proxyInfos:   make([]*XrayPoolProxyInfo, 0),
 	}
 
@@ -94,13 +94,13 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 	b.LbHttpUrl = fmt.Sprintf(httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(b.LBPort))
 	for i := 0; i < browserOptions.BrowserInstanceCount(); i++ {
 
-		oneBrowser, err := NewBrowserBase(browserOptions.BrowserFPath(), b.LbHttpUrl,
+		oneBrowserInfo, err := NewBrowserBase(browserOptions.BrowserFPath(), b.LbHttpUrl,
 			browserOptions.LoadAdblock(), browserOptions.LoadPicture())
 		if err != nil {
 			b.log.Error(errors.New("NewBrowserBase error:" + err.Error()))
 			return nil
 		}
-		b.multiBrowser = append(b.multiBrowser, oneBrowser)
+		b.multiBrowser = append(b.multiBrowser, oneBrowserInfo)
 	}
 
 	return b
@@ -112,7 +112,7 @@ func (b *Browser) GetOptions() *BrowserOptions {
 }
 
 // GetLBBrowser 这里获取到的 Browser 使用的代理是负载均衡的代理
-func (b *Browser) GetLBBrowser() *rod.Browser {
+func (b *Browser) GetLBBrowser() *BrowserInfo {
 
 	b.browserLocker.Lock()
 	defer func() {
@@ -291,7 +291,7 @@ func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo)
 }
 
 // NewBrowser 每次新建一个 Browser ，使用 HttpProxy 列表中的一个作为代理
-func (b *Browser) NewBrowser() (*rod.Browser, error) {
+func (b *Browser) NewBrowser() (*BrowserInfo, error) {
 
 	b.httpProxyLocker.Lock()
 	defer func() {
@@ -307,22 +307,22 @@ func (b *Browser) NewBrowser() (*rod.Browser, error) {
 		b.httpProxyIndex = 0
 	}
 
-	oneBrowser, err := NewBrowserBase(b.rodOptions.BrowserFPath(), b.proxyInfos[b.httpProxyIndex].HttpUrl,
+	oneBrowserInfo, err := NewBrowserBase(b.rodOptions.BrowserFPath(), b.proxyInfos[b.httpProxyIndex].HttpUrl,
 		b.rodOptions.LoadAdblock(), b.rodOptions.LoadPicture())
 	if err != nil {
 		return nil, errors.New("NewBrowser.NewBrowserBase error:" + err.Error())
 	}
 
-	return oneBrowser, nil
+	return oneBrowserInfo, nil
 }
 
 func (b *Browser) Close() {
 
 	for _, oneBrowser := range b.multiBrowser {
-		_ = oneBrowser.Close()
+		oneBrowser.Close()
 	}
 
-	b.multiBrowser = make([]*rod.Browser, 0)
+	b.multiBrowser = make([]*BrowserInfo, 0)
 }
 
 type ProxyResult struct {
