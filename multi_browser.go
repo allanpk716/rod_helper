@@ -218,23 +218,50 @@ func (b *Browser) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
 }
 
 // PageStatusCodeCheck 页面状态码检查
-func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, nowProxyInfo *XrayPoolProxyInfo, baseUrl string) (PageCheck, error) {
+func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCodeInfo []StatusCodeInfo, nowProxyInfo *XrayPoolProxyInfo, baseUrl string) (PageCheck, error) {
+
+	doWhat := func(codeInfo StatusCodeInfo) (PageCheck, error) {
+		if codeInfo.NeedPunishment == true {
+			// 需要进行惩罚
+			err := b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
+			if err != nil {
+				return codeInfo.WillDo, err
+			}
+		}
+		return codeInfo.WillDo, nil
+	}
 
 	if e != nil && e.Response != nil {
 
-		if e.Response.Status == 404 || e.Response.Status >= 500 {
-			// 这个页面有问题，跳过后续的逻辑，不再使用其他代理继续处理这个页面
-			logger.Warningln("Skip, Status Code:", e.Response.Status, baseUrl)
-			return Skip, nil
-		} else if e.Response.Status == 403 {
-			// 403，可能是被封了，需要换代理，设置时间惩罚，然后跳过
-			logger.Warningln(errors.Errorf("403, %s %s", nowProxyInfo.Name, baseUrl))
-			err := b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
-			if err != nil {
-				return Repeat, err
+		for _, codeInfo := range statusCodeInfo {
+			switch codeInfo.Operator {
+			case Match:
+				// 等于的情况
+				for _, code := range codeInfo.Codes {
+					if e.Response.Status == code {
+						return doWhat(codeInfo)
+					}
+				}
+			case GreatThan:
+				// 大于的情况
+				for _, code := range codeInfo.Codes {
+					if e.Response.Status > code {
+						return doWhat(codeInfo)
+					}
+				}
+			case LessThan:
+				// 小于的情况
+				for _, code := range codeInfo.Codes {
+					if e.Response.Status < code {
+						return doWhat(codeInfo)
+					}
+				}
+			default:
+				// 其他情况跳过
+				continue
 			}
-			return Repeat, err
 		}
+
 		// 都没踩中，那么就继续下面的逻辑吧
 		return Success, nil
 	} else {
