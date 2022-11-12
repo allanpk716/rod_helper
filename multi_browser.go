@@ -247,7 +247,7 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCo
 			}
 		}
 
-		logger.Warningln("PageStatusCodeCheck", Success, baseUrl)
+		logger.Infoln("PageStatusCodeCheck", Success, baseUrl)
 		// 都没踩中，那么就继续下面的逻辑吧
 		return Success, nil
 	} else {
