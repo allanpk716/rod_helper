@@ -20,13 +20,10 @@ import (
 type Browser struct {
 	log             *logrus.Logger
 	rodOptions      *BrowserOptions      // 参数
-	multiBrowser    []*BrowserInfo       // 多浏览器实例
-	browserIndex    int                  // 当前使用的浏览器的索引
-	browserLocker   sync.Mutex           // 浏览器的锁
 	httpProxyIndex  int                  // 当前使用的 http 代理的索引
 	httpProxyLocker sync.Mutex           // http 代理的锁
-	LbHttpUrl       string               // 负载均衡的 http proxy url
-	LBPort          int                  //负载均衡 http 端口
+	lbHttpUrl       string               // 负载均衡的 http proxy url
+	lbPort          int                  // 负载均衡 http 端口
 	proxyInfos      []*XrayPoolProxyInfo // XrayPool 中的代理信息
 }
 
@@ -68,10 +65,9 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 	}
 
 	b := &Browser{
-		log:          browserOptions.Log,
-		rodOptions:   browserOptions,
-		multiBrowser: make([]*BrowserInfo, 0),
-		proxyInfos:   make([]*XrayPoolProxyInfo, 0),
+		log:        browserOptions.Log,
+		rodOptions: browserOptions,
+		proxyInfos: make([]*XrayPoolProxyInfo, 0),
 	}
 
 	for index, result := range proxyResult.OpenResultList {
@@ -89,19 +85,9 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 		}
 		b.proxyInfos = append(b.proxyInfos, &tmpProxyInfos)
 	}
-	b.LBPort = proxyResult.LBPort
+	b.lbPort = proxyResult.LBPort
 
-	b.LbHttpUrl = fmt.Sprintf(httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(b.LBPort))
-	for i := 0; i < browserOptions.BrowserInstanceCount(); i++ {
-
-		oneBrowserInfo, err := NewBrowserBase(browserOptions.BrowserFPath(), b.LbHttpUrl,
-			browserOptions.LoadAdblock(), browserOptions.LoadPicture())
-		if err != nil {
-			b.log.Error(errors.New("NewBrowserBase error:" + err.Error()))
-			return nil
-		}
-		b.multiBrowser = append(b.multiBrowser, oneBrowserInfo)
-	}
+	b.lbHttpUrl = fmt.Sprintf(httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(b.lbPort))
 
 	return b
 }
@@ -111,20 +97,14 @@ func (b *Browser) GetOptions() *BrowserOptions {
 	return b.rodOptions
 }
 
-// GetLBBrowser 这里获取到的 Browser 使用的代理是负载均衡的代理
-func (b *Browser) GetLBBrowser() *BrowserInfo {
+// LBPort 负载均衡 http 端口
+func (b *Browser) LBPort() int {
+	return b.lbPort
+}
 
-	b.browserLocker.Lock()
-	defer func() {
-		b.browserIndex++
-		b.browserLocker.Unlock()
-	}()
-
-	if b.browserIndex >= len(b.multiBrowser) {
-		b.browserIndex = 0
-	}
-
-	return b.multiBrowser[b.browserIndex]
+// LBHttpUrl 负载均衡的 http proxy url
+func (b *Browser) LBHttpUrl() string {
+	return b.lbHttpUrl
 }
 
 // GetOneProxyInfo 轮询获取一个代理实例，直接给出这个代理的信息，不会考虑访问的频率问题
@@ -352,11 +332,6 @@ func (b *Browser) NewBrowser() (*BrowserInfo, error) {
 
 func (b *Browser) Close() {
 
-	for _, oneBrowser := range b.multiBrowser {
-		oneBrowser.Close()
-	}
-
-	b.multiBrowser = make([]*BrowserInfo, 0)
 }
 
 type ProxyResult struct {
