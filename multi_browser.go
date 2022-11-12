@@ -220,7 +220,12 @@ func (b *Browser) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
 // PageStatusCodeCheck 页面状态码检查
 func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCodeInfo []StatusCodeInfo, nowProxyInfo *XrayPoolProxyInfo, baseUrl string) (PageCheck, error) {
 
-	doWhat := func(codeInfo StatusCodeInfo) (PageCheck, error) {
+	doWhat := func(index int, codeInfo StatusCodeInfo) (PageCheck, error) {
+
+		defer func() {
+			logger.Warningln("PageStatusCodeCheck", codeInfo.Operator, codeInfo.Codes[index], codeInfo.WillDo, baseUrl)
+		}()
+
 		if codeInfo.NeedPunishment == true {
 			// 需要进行惩罚
 			err := b.SetProxyNodeSkipByTime(nowProxyInfo.Index, b.rodOptions.timeConfig.GetProxyNodeSkipAccessTime())
@@ -237,23 +242,23 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCo
 			switch codeInfo.Operator {
 			case Match:
 				// 等于的情况
-				for _, code := range codeInfo.Codes {
+				for index, code := range codeInfo.Codes {
 					if e.Response.Status == code {
-						return doWhat(codeInfo)
+						return doWhat(index, codeInfo)
 					}
 				}
 			case GreatThan:
 				// 大于的情况
-				for _, code := range codeInfo.Codes {
+				for index, code := range codeInfo.Codes {
 					if e.Response.Status > code {
-						return doWhat(codeInfo)
+						return doWhat(index, codeInfo)
 					}
 				}
 			case LessThan:
 				// 小于的情况
-				for _, code := range codeInfo.Codes {
+				for index, code := range codeInfo.Codes {
 					if e.Response.Status < code {
-						return doWhat(codeInfo)
+						return doWhat(index, codeInfo)
 					}
 				}
 			default:
@@ -262,6 +267,7 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCo
 			}
 		}
 
+		logger.Warningln("PageStatusCodeCheck", Success, baseUrl)
 		// 都没踩中，那么就继续下面的逻辑吧
 		return Success, nil
 	} else {
@@ -394,3 +400,16 @@ const (
 	Repeat                       // 跳过后续的逻辑，但是要求重新访问
 	Success                      // 检查通过，继续后续的逻辑判断
 )
+
+func (s PageCheck) String() string {
+	switch s {
+	case Skip:
+		return "Skip"
+	case Repeat:
+		return "Repeat"
+	case Success:
+		return "Success"
+	default:
+		return "Unknown"
+	}
+}

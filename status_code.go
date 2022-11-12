@@ -14,3 +14,16 @@ const (
 	GreatThan                     // 大于
 	LessThan                      // 小于
 )
+
+func (s Operator) String() string {
+	switch s {
+	case Match:
+		return "=="
+	case GreatThan:
+		return ">"
+	case LessThan:
+		return "<"
+	default:
+		return "Unknown"
+	}
+}
