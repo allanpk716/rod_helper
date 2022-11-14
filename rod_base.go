@@ -111,7 +111,7 @@ func ContainedWords(pageContent string, failedWords []string) (bool, int) {
 
 	for i, word := range failedWords {
 
-		if strings.Contains(strings.ToLower(pageContent), word) == true {
+		if strings.Contains(strings.ToLower(pageContent), strings.ToLower(word)) == true {
 			return true, i
 		}
 	}
