@@ -93,3 +93,7 @@ func (r *BrowserOptions) SetFailWordsConfig(failWordsConfig FailWordsConfig) {
 func (r *BrowserOptions) GetFailWordsConfig() FailWordsConfig {
 	return r.failWordsConfig
 }
+
+func (r *BrowserOptions) GetTimeConfig() TimeConfig {
+	return r.timeConfig
+}

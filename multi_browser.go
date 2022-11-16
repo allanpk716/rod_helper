@@ -150,6 +150,7 @@ func (b *Browser) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error 
 		return ErrIndexIsOutOfRange
 	}
 
+	b.log.Infoln("SetProxyNodeSkipByTime", index, targetSkipTime)
 	b.proxyInfos[index].skipAccessTime = targetSkipTime
 	return nil
 }

@@ -6,4 +6,5 @@ var (
 	ErrProxyInfosIsEmpty = errors.New("proxyInfos is empty")
 	ErrSkipAccessTime    = errors.New("skipAccessTime")
 	ErrIndexIsOutOfRange = errors.New("index is out of range")
+	ErrPageLoadFailed    = errors.New("pageLoaded == false")
 )
