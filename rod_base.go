@@ -175,7 +175,7 @@ func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []stri
 func HasPageLoaded(page *rod.Page, targetElementXPath string, timeOut int) bool {
 
 	for {
-		foundEle, _, _ := page.HasX(targetElementXPath)
+		foundEle, _, _ := page.Timeout(1 * time.Second).HasX(targetElementXPath)
 		if foundEle == true {
 			return true
 		}
