@@ -1,6 +1,7 @@
 package rod_helper
 
 import (
+	"github.com/WQGroup/logger"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
@@ -133,6 +134,59 @@ func ContainedWordsRegex(pageContent string, failedWordsRegex []string) (bool, i
 	}
 
 	return false, -1
+}
+
+// PageStatusCodeCheck 页面状态码检查
+func PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCodeInfo []StatusCodeInfo) (PageCheck, error) {
+
+	doWhat := func(index int, codeInfo StatusCodeInfo) (PageCheck, error) {
+
+		defer func() {
+			logger.Warningln("PageStatusCodeCheck", codeInfo.Operator, codeInfo.Codes[index], codeInfo.WillDo)
+		}()
+
+		return codeInfo.WillDo, nil
+	}
+
+	if e != nil && e.Response != nil {
+
+		for _, codeInfo := range statusCodeInfo {
+			switch codeInfo.Operator {
+			case Match:
+				// 等于的情况
+				for index, code := range codeInfo.Codes {
+					if e.Response.Status == code {
+						return doWhat(index, codeInfo)
+					}
+				}
+			case GreatThan:
+				// 大于的情况
+				for index, code := range codeInfo.Codes {
+					if e.Response.Status > code {
+						return doWhat(index, codeInfo)
+					}
+				}
+			case LessThan:
+				// 小于的情况
+				for index, code := range codeInfo.Codes {
+					if e.Response.Status < code {
+						return doWhat(index, codeInfo)
+					}
+				}
+			default:
+				// 其他情况跳过
+				continue
+			}
+		}
+
+		logger.Infoln("PageStatusCodeCheck", Success)
+		// 都没踩中，那么就继续下面的逻辑吧
+		return Success, nil
+	} else {
+		// 这个事件收不到，那么就是无法使用 page 获取 HTML 以及查询元素的操作的，会卡住一直等着，所以这里需要设置一下，跳过这个代理
+		logger.Warningln("Skip, Response is nil")
+		return Repeat, nil
+	}
 }
 
 func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []string) (string, error) {
