@@ -253,7 +253,7 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCo
 		return Success, nil
 	} else {
 		// 这个事件收不到，那么就是无法使用 page 获取 HTML 以及查询元素的操作的，会卡住一直等着，所以这里需要设置一下，跳过这个代理
-		logger.Warningln("Skip, Response is nil", nowProxyInfo.Name, baseUrl)
+		logger.Warningln("Response is nil", Repeat, nowProxyInfo.Name, baseUrl)
 		return Repeat, nil
 	}
 }
