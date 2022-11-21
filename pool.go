@@ -17,7 +17,7 @@ import (
 	"github.com/go-rod/rod"
 )
 
-type Browser struct {
+type Pool struct {
 	log             *logrus.Logger
 	rodOptions      *BrowserOptions      // 参数
 	httpProxyIndex  int                  // 当前使用的 http 代理的索引
@@ -27,8 +27,8 @@ type Browser struct {
 	proxyInfos      []*XrayPoolProxyInfo // XrayPool 中的代理信息
 }
 
-// NewMultiBrowser 面向与爬虫的时候使用 Browser
-func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
+// NewMultiBrowser 面向与爬虫的时候使用 Pool
+func NewMultiBrowser(browserOptions *BrowserOptions) *Pool {
 
 	// 从配置中，判断 XrayPool 是否启动
 	if browserOptions.XrayPoolUrl() == "" {
@@ -64,7 +64,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 		return nil
 	}
 
-	b := &Browser{
+	b := &Pool{
 		log:        browserOptions.Log,
 		rodOptions: browserOptions,
 		proxyInfos: make([]*XrayPoolProxyInfo, 0),
@@ -93,22 +93,22 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Browser {
 }
 
 // GetOptions 获取设置的参数
-func (b *Browser) GetOptions() *BrowserOptions {
+func (b *Pool) GetOptions() *BrowserOptions {
 	return b.rodOptions
 }
 
 // LBPort 负载均衡 http 端口
-func (b *Browser) LBPort() int {
+func (b *Pool) LBPort() int {
 	return b.lbPort
 }
 
 // LBHttpUrl 负载均衡的 http proxy url
-func (b *Browser) LBHttpUrl() string {
+func (b *Pool) LBHttpUrl() string {
 	return b.lbHttpUrl
 }
 
 // GetOneProxyInfo 轮询获取一个代理实例，直接给出这个代理的信息，不会考虑访问的频率问题
-func (b *Browser) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
+func (b *Pool) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 
 	b.httpProxyLocker.Lock()
 	nowUnixTime := time.Now().Unix()
@@ -136,7 +136,7 @@ func (b *Browser) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 }
 
 // SetProxyNodeSkipByTime 设置这个节点，等待多少秒之后才可以被再次使用，仅仅针对 GetOneProxyInfo、GetProxyInfoSync 有效
-func (b *Browser) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error {
+func (b *Pool) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error {
 	b.httpProxyLocker.Lock()
 	defer func() {
 		b.httpProxyLocker.Unlock()
@@ -156,7 +156,7 @@ func (b *Browser) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error 
 }
 
 // GetProxyInfoSync 根据 TimeConfig 设置，寻找一个可用的节点。可以并发用，但是当前获取的节点，会根据访问时间，可能会有 sleep 阻塞等待
-func (b *Browser) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
+func (b *Pool) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
 
 	var outProxyInfo *XrayPoolProxyInfo
 	var err error
@@ -199,7 +199,7 @@ func (b *Browser) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
 }
 
 // PageStatusCodeCheck 页面状态码检查
-func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCodeInfo []StatusCodeInfo, nowProxyInfo *XrayPoolProxyInfo, baseUrl string) (PageCheck, error) {
+func (b *Pool) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCodeInfo []StatusCodeInfo, nowProxyInfo *XrayPoolProxyInfo, baseUrl string) (PageCheck, error) {
 
 	doWhat := func(index int, codeInfo StatusCodeInfo) (PageCheck, error) {
 
@@ -259,7 +259,7 @@ func (b *Browser) PageStatusCodeCheck(e *proto.NetworkResponseReceived, statusCo
 }
 
 // HasSuccessWord 是否包含成功的关键词，开启这个设置才有效，需要提前调用 PageStatusCodeCheck 判断，或者判断 proto.NetworkResponseReceived 的值
-func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, error) {
+func (b *Pool) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, error) {
 
 	pageContent, err := page.HTML()
 	if err != nil {
@@ -283,7 +283,7 @@ func (b *Browser) HasSuccessWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo
 }
 
 // HasFailedWord 是否包含失败关键词，开启这个设置才有效，需要提前调用 PageStatusCodeCheck 判断，或者判断 proto.NetworkResponseReceived 的值
-func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, string, error) {
+func (b *Pool) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo) (bool, string, error) {
 
 	pageContent, err := page.HTML()
 	if err != nil {
@@ -305,8 +305,8 @@ func (b *Browser) HasFailedWord(page *rod.Page, nowProxyInfo *XrayPoolProxyInfo)
 	return false, "", nil
 }
 
-// NewBrowser 每次新建一个 Browser ，使用 HttpProxy 列表中的一个作为代理
-func (b *Browser) NewBrowser() (*BrowserInfo, error) {
+// NewBrowser 每次新建一个 Pool ，使用 HttpProxy 列表中的一个作为代理
+func (b *Pool) NewBrowser() (*BrowserInfo, error) {
 
 	b.httpProxyLocker.Lock()
 	defer func() {
@@ -331,7 +331,7 @@ func (b *Browser) NewBrowser() (*BrowserInfo, error) {
 	return oneBrowserInfo, nil
 }
 
-func (b *Browser) Close() {
+func (b *Pool) Close() {
 
 }
 
