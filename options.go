@@ -4,7 +4,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type BrowserOptions struct {
+type PoolOptions struct {
 	Log                  *logrus.Logger     // 日志
 	loadAdblock          bool               // 是否加载 adblock
 	loadPic              bool               // 是否加载图片
@@ -18,8 +18,8 @@ type BrowserOptions struct {
 	failWordsConfig      FailWordsConfig    // 失败的关键词
 }
 
-func NewBrowserOptions(log *logrus.Logger, loadAdblock bool, loadPic bool, timeConfig TimeConfig) *BrowserOptions {
-	return &BrowserOptions{
+func NewBrowserOptions(log *logrus.Logger, loadAdblock bool, loadPic bool, timeConfig TimeConfig) *PoolOptions {
+	return &PoolOptions{
 		Log:                  log,
 		loadAdblock:          loadAdblock,
 		loadPic:              loadPic,
@@ -27,73 +27,73 @@ func NewBrowserOptions(log *logrus.Logger, loadAdblock bool, loadPic bool, timeC
 		timeConfig:           timeConfig}
 }
 
-func (r *BrowserOptions) SetPreLoadUrl(url string) {
+func (r *PoolOptions) SetPreLoadUrl(url string) {
 	r.preLoadUrl = url
 }
 
-func (r *BrowserOptions) PreLoadUrl() string {
+func (r *PoolOptions) PreLoadUrl() string {
 	return r.preLoadUrl
 }
 
 // SetXrayPoolUrl 127.0.0.1
-func (r *BrowserOptions) SetXrayPoolUrl(xrayUrl string) {
+func (r *PoolOptions) SetXrayPoolUrl(xrayUrl string) {
 	r.xrayPoolUrl = xrayUrl
 }
 
 // XrayPoolUrl 127.0.0.1
-func (r *BrowserOptions) XrayPoolUrl() string {
+func (r *PoolOptions) XrayPoolUrl() string {
 	return r.xrayPoolUrl
 }
 
 // SetXrayPoolPort 19038
-func (r *BrowserOptions) SetXrayPoolPort(xrayPort string) {
+func (r *PoolOptions) SetXrayPoolPort(xrayPort string) {
 	r.xrayPoolPort = xrayPort
 }
 
 // XrayPoolPort 19038
-func (r *BrowserOptions) XrayPoolPort() string {
+func (r *PoolOptions) XrayPoolPort() string {
 	return r.xrayPoolPort
 }
 
-func (r *BrowserOptions) SetBrowserInstanceCount(count int) {
+func (r *PoolOptions) SetBrowserInstanceCount(count int) {
 	r.browserInstanceCount = count
 }
-func (r *BrowserOptions) BrowserInstanceCount() int {
+func (r *PoolOptions) BrowserInstanceCount() int {
 	return r.browserInstanceCount
 }
 
-func (r *BrowserOptions) LoadAdblock() bool {
+func (r *PoolOptions) LoadAdblock() bool {
 	return r.loadAdblock
 }
 
-func (r *BrowserOptions) LoadPicture() bool {
+func (r *PoolOptions) LoadPicture() bool {
 	return r.loadPic
 }
 
-func (r *BrowserOptions) BrowserFPath() string {
+func (r *PoolOptions) BrowserFPath() string {
 	return r.browserFPath
 }
 
-func (r *BrowserOptions) SetBrowserFPath(path string) {
+func (r *PoolOptions) SetBrowserFPath(path string) {
 	r.browserFPath = path
 }
 
-func (r *BrowserOptions) SetSuccessWordsConfig(successWordsConfig SuccessWordsConfig) {
+func (r *PoolOptions) SetSuccessWordsConfig(successWordsConfig SuccessWordsConfig) {
 	r.successWordsConfig = successWordsConfig
 }
 
-func (r *BrowserOptions) GetSuccessWordsConfig() SuccessWordsConfig {
+func (r *PoolOptions) GetSuccessWordsConfig() SuccessWordsConfig {
 	return r.successWordsConfig
 }
 
-func (r *BrowserOptions) SetFailWordsConfig(failWordsConfig FailWordsConfig) {
+func (r *PoolOptions) SetFailWordsConfig(failWordsConfig FailWordsConfig) {
 	r.failWordsConfig = failWordsConfig
 }
 
-func (r *BrowserOptions) GetFailWordsConfig() FailWordsConfig {
+func (r *PoolOptions) GetFailWordsConfig() FailWordsConfig {
 	return r.failWordsConfig
 }
 
-func (r *BrowserOptions) GetTimeConfig() TimeConfig {
+func (r *PoolOptions) GetTimeConfig() TimeConfig {
 	return r.timeConfig
 }

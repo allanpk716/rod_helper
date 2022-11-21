@@ -19,7 +19,7 @@ import (
 
 type Pool struct {
 	log             *logrus.Logger
-	rodOptions      *BrowserOptions      // 参数
+	rodOptions      *PoolOptions         // 参数
 	httpProxyIndex  int                  // 当前使用的 http 代理的索引
 	httpProxyLocker sync.Mutex           // http 代理的锁
 	lbHttpUrl       string               // 负载均衡的 http proxy url
@@ -27,8 +27,8 @@ type Pool struct {
 	proxyInfos      []*XrayPoolProxyInfo // XrayPool 中的代理信息
 }
 
-// NewMultiBrowser 面向与爬虫的时候使用 Pool
-func NewMultiBrowser(browserOptions *BrowserOptions) *Pool {
+// NewPool 面向与爬虫的时候使用 Pool
+func NewPool(browserOptions *PoolOptions) *Pool {
 
 	// 从配置中，判断 XrayPool 是否启动
 	if browserOptions.XrayPoolUrl() == "" {
@@ -93,7 +93,7 @@ func NewMultiBrowser(browserOptions *BrowserOptions) *Pool {
 }
 
 // GetOptions 获取设置的参数
-func (b *Pool) GetOptions() *BrowserOptions {
+func (b *Pool) GetOptions() *PoolOptions {
 	return b.rodOptions
 }
 
