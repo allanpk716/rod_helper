@@ -259,6 +259,7 @@ func NewBrowserInfo(browser *rod.Browser, userDataDir string) *BrowserInfo {
 func (bi *BrowserInfo) Close() {
 	if bi.Browser != nil {
 		_ = bi.Browser.Close()
+		bi.Browser = nil
 	}
 	if bi.UserDataDir != "" {
 		_ = os.RemoveAll(bi.UserDataDir)
