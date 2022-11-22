@@ -14,11 +14,15 @@ import (
 	"time"
 )
 
-func NewBrowserBase(browserFPath, httpProxyURL string, loadAdblock, loadPic bool) (*BrowserInfo, error) {
+func NewBrowserBase(tmpRootFolder, browserFPath, httpProxyURL string, loadAdblock, loadPic bool) (*BrowserInfo, error) {
 
 	var err error
 	// 随机的 rod 子文件夹名称
-	nowUserData := filepath.Join(GetRodTmpRootFolder(), RandStringBytesMaskImprSrcSB(20))
+	nowUserData := filepath.Join(tmpRootFolder, RandStringBytesMaskImprSrcSB(20))
+	err = os.MkdirAll(nowUserData, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
 	var browser *rod.Browser
 	// 如果没有指定 chrome 的路径，则使用 rod 自行下载的 chrome
 	err = rod.Try(func() {

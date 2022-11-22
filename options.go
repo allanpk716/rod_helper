@@ -18,7 +18,7 @@ type PoolOptions struct {
 	failWordsConfig      FailWordsConfig    // 失败的关键词
 }
 
-func NewBrowserOptions(log *logrus.Logger, loadAdblock bool, loadPic bool, timeConfig TimeConfig) *PoolOptions {
+func NewPoolOptions(log *logrus.Logger, loadAdblock bool, loadPic bool, timeConfig TimeConfig) *PoolOptions {
 	return &PoolOptions{
 		Log:                  log,
 		loadAdblock:          loadAdblock,
