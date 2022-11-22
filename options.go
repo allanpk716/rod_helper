@@ -12,6 +12,7 @@ type PoolOptions struct {
 	xrayPoolUrl          string             // xray pool url
 	xrayPoolPort         string             // xray pool port
 	browserInstanceCount int                // 浏览器最大的实例，xrayPoolUrl 有值的时候生效，用于爬虫。因为每启动一个实例就试用一个固定的代理，所以需要多个才行
+	cacheRootDirPath     string             // 缓存的根目录
 	browserFPath         string             // 浏览器的路径
 	timeConfig           TimeConfig         // 时间设置
 	successWordsConfig   SuccessWordsConfig // 成功的关键词
@@ -76,6 +77,14 @@ func (r *PoolOptions) BrowserFPath() string {
 
 func (r *PoolOptions) SetBrowserFPath(path string) {
 	r.browserFPath = path
+}
+
+func (r *PoolOptions) CacheRootDirPath() string {
+	return r.cacheRootDirPath
+}
+
+func (r *PoolOptions) SetCacheRootDirPath(path string) {
+	r.cacheRootDirPath = path
 }
 
 func (r *PoolOptions) SetSuccessWordsConfig(successWordsConfig SuccessWordsConfig) {

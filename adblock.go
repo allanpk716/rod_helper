@@ -14,12 +14,12 @@ import (
 )
 
 // GetADBlock 根据缓存时间，每周获取一次最新的 adblock，注意需要完全关闭所有的 browser，再进行次操作
-func GetADBlock(httpProxyUrl string) (string, error) {
+func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 
 	defer func() {
 		logger.Infoln("get adblock done")
 	}()
-	nowUserData := filepath.Join(GetRodTmpRootFolder(), RandStringBytesMaskImprSrcSB(20))
+	nowUserData := filepath.Join(GetRodTmpRootFolder(cacheRootDirPath), RandStringBytesMaskImprSrcSB(20))
 	purl := launcher.New().
 		UserDataDir(nowUserData).
 		MustLaunch()
@@ -29,7 +29,7 @@ func GetADBlock(httpProxyUrl string) (string, error) {
 		if browser != nil {
 			_ = browser.Close()
 		}
-		_ = ClearRodTmpRootFolder()
+		_ = ClearRodTmpRootFolder(cacheRootDirPath)
 	}()
 	vResult, err := browser.Version()
 	if err != nil {
@@ -42,9 +42,9 @@ func GetADBlock(httpProxyUrl string) (string, error) {
 	}
 	browserVersion = versions[1]
 	// 判断插件是否已经下载
-	desFile := filepath.Join(GetADBlockFolder(), browserVersion+".crx")
+	desFile := filepath.Join(GetADBlockFolder(cacheRootDirPath), browserVersion+".crx")
 	if IsFile(desFile) == false ||
-		getDownloadedCacheTime().DownloadedTime < time.Now().AddDate(0, 0, -7).Unix() {
+		getDownloadedCacheTime(cacheRootDirPath).DownloadedTime < time.Now().AddDate(0, 0, -7).Unix() {
 		// 没有下载，那么就去下载，或者下载的时间超过了一周，也需要再次下载
 		// 下载插件
 		logger.Infoln("download adblock plugin start...")
@@ -53,7 +53,7 @@ func GetADBlock(httpProxyUrl string) (string, error) {
 			client.SetProxy(httpProxyUrl)
 		}
 		client.SetTimeout(1 * time.Minute)
-		client.SetOutputDirectory(GetADBlockFolder())
+		client.SetOutputDirectory(GetADBlockFolder(cacheRootDirPath))
 		adblockDownloadUrl := adblockDownloadUrl0 + browserVersion + adblockDownloadUrl1 + adblockID + adblockDownloadUrl2
 		_, err = client.R().
 			SetOutput(browserVersion + ".crx").
@@ -66,17 +66,18 @@ func GetADBlock(httpProxyUrl string) (string, error) {
 			return "", errors.New("get adblock from web failed")
 		}
 
-		setDownloadedCacheTime(&ADBlockCacheInfo{
-			DownloadedTime: time.Now().Unix(),
-		})
+		setDownloadedCacheTime(cacheRootDirPath,
+			&ADBlockCacheInfo{
+				DownloadedTime: time.Now().Unix(),
+			})
 	}
 
 	return desFile, nil
 }
 
 // GetADBlockLocalPath 获取本地的 adblock 插件路径，如果不存在会自动去远程下载
-func GetADBlockLocalPath(httpProxyUrl string) string {
-	desFile, err := GetADBlock(httpProxyUrl)
+func GetADBlockLocalPath(cacheRootDirPath, httpProxyUrl string) string {
+	desFile, err := GetADBlock(cacheRootDirPath, httpProxyUrl)
 	if err != nil {
 		panic(errors.New(fmt.Sprintf("get adblock failed: %s", err)))
 	}
@@ -85,12 +86,12 @@ func GetADBlockLocalPath(httpProxyUrl string) string {
 	}
 	filenameOnly := strings.TrimSuffix(filepath.Base(desFile), filepath.Ext(desFile))
 
-	return filepath.Join(GetADBlockFolder(), filenameOnly)
+	return filepath.Join(GetADBlockFolder(cacheRootDirPath), filenameOnly)
 }
 
-func getDownloadedCacheTime() *ADBlockCacheInfo {
+func getDownloadedCacheTime(cacheRootDirPath string) *ADBlockCacheInfo {
 
-	saveFPath := filepath.Join(GetADBlockFolder(), adblockCacheFileName)
+	saveFPath := filepath.Join(GetADBlockFolder(cacheRootDirPath), adblockCacheFileName)
 	if IsFile(saveFPath) == false {
 		// 需要保存一个新的
 		info := ADBlockCacheInfo{
@@ -112,8 +113,8 @@ func getDownloadedCacheTime() *ADBlockCacheInfo {
 	}
 }
 
-func setDownloadedCacheTime(info *ADBlockCacheInfo) {
-	saveFPath := filepath.Join(GetADBlockFolder(), adblockCacheFileName)
+func setDownloadedCacheTime(cacheRootDirPath string, info *ADBlockCacheInfo) {
+	saveFPath := filepath.Join(GetADBlockFolder(cacheRootDirPath), adblockCacheFileName)
 	err := ToFile(saveFPath, *info)
 	if err != nil {
 		logger.Panicln("save adblock cache info failed: ", err)

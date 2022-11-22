@@ -7,14 +7,10 @@ import (
 )
 
 // GetRodTmpRootFolder 在程序的根目录新建，rod 缓存用文件夹
-func GetRodTmpRootFolder() string {
+func GetRodTmpRootFolder(nowProcessRoot string) string {
 
-	nowProcessRoot, err := os.Getwd()
-	if err != nil {
-		logger.Panicln(err)
-	}
 	nowProcessRoot = filepath.Join(nowProcessRoot, cacheRootFolderName, RodCacheFolder)
-	err = os.MkdirAll(nowProcessRoot, os.ModePerm)
+	err := os.MkdirAll(nowProcessRoot, os.ModePerm)
 	if err != nil {
 		logger.Panicln(err)
 	}
@@ -22,9 +18,9 @@ func GetRodTmpRootFolder() string {
 }
 
 // ClearRodTmpRootFolder 清理 rod 缓存文件夹
-func ClearRodTmpRootFolder() error {
+func ClearRodTmpRootFolder(nowProcessRoot string) error {
 
-	nowTmpFolder := GetRodTmpRootFolder()
+	nowTmpFolder := GetRodTmpRootFolder(nowProcessRoot)
 	pathSep := string(os.PathSeparator)
 	files, err := os.ReadDir(nowTmpFolder)
 	if err != nil {
@@ -50,14 +46,10 @@ func ClearRodTmpRootFolder() error {
 }
 
 // GetADBlockFolder 在程序的根目录新建，adblock 缓存用文件夹
-func GetADBlockFolder() string {
+func GetADBlockFolder(nowProcessRoot string) string {
 
-	nowProcessRoot, err := os.Getwd()
-	if err != nil {
-		logger.Panicln(err)
-	}
 	nowProcessRoot = filepath.Join(nowProcessRoot, cacheRootFolderName, PluginFolder, ADBlockFolder)
-	err = os.MkdirAll(nowProcessRoot, os.ModePerm)
+	err := os.MkdirAll(nowProcessRoot, os.ModePerm)
 	if err != nil {
 		logger.Panicln(err)
 	}
@@ -65,9 +57,9 @@ func GetADBlockFolder() string {
 }
 
 // GetADBlockUnZipFolder 在程序的根目录新建，adblock 缓存用文件夹
-func GetADBlockUnZipFolder() string {
+func GetADBlockUnZipFolder(nowProcessRoot string) string {
 
-	nowProcessRoot := GetADBlockFolder()
+	nowProcessRoot = GetADBlockFolder(nowProcessRoot)
 	nowProcessRoot = filepath.Join(nowProcessRoot, ADBlockUnZipFolder)
 	err := os.MkdirAll(nowProcessRoot, os.ModePerm)
 	if err != nil {

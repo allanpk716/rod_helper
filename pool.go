@@ -322,7 +322,8 @@ func (b *Pool) NewBrowser() (*BrowserInfo, error) {
 		b.httpProxyIndex = 0
 	}
 
-	oneBrowserInfo, err := NewBrowserBase(b.rodOptions.BrowserFPath(), b.proxyInfos[b.httpProxyIndex].HttpUrl,
+	oneBrowserInfo, err := NewBrowserBase(b.rodOptions.CacheRootDirPath(),
+		b.rodOptions.BrowserFPath(), b.proxyInfos[b.httpProxyIndex].HttpUrl,
 		b.rodOptions.LoadAdblock(), b.rodOptions.LoadPicture())
 	if err != nil {
 		return nil, errors.New("NewBrowser.NewBrowserBase error:" + err.Error())

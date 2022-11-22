@@ -8,7 +8,7 @@ func TestNewBrowserBase(t *testing.T) {
 
 	httpProxyUrl := "http://127.0.0.1:10809"
 	//movieUrl := "https://www.google.com"
-	b, err := NewBrowserBase(GetRodTmpRootFolder(), "", httpProxyUrl, true, false)
+	b, err := NewBrowserBase(GetRodTmpRootFolder("."), "", httpProxyUrl, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
