@@ -52,6 +52,17 @@ func ClearRodTmpRootFolder(nowProcessRoot string) error {
 	return nil
 }
 
+// GetTmpFolderByName 获取缓存的文件夹，没有则新建
+func GetTmpFolderByName(nowProcessRoot, folderName string) string {
+	rootPath := GetRodTmpRootFolder(nowProcessRoot)
+	tmpFolderFullPath := filepath.Join(rootPath, folderName)
+	err := os.MkdirAll(tmpFolderFullPath, os.ModePerm)
+	if err != nil {
+		logger.Panicln(err)
+	}
+	return tmpFolderFullPath
+}
+
 // GetADBlockFolder 在程序的根目录新建，adblock 缓存用文件夹
 func GetADBlockFolder(nowProcessRoot string) string {
 
