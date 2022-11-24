@@ -29,7 +29,13 @@ func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 		if browser != nil {
 			_ = browser.Close()
 		}
-		_ = ClearRodTmpRootFolder(cacheRootDirPath)
+
+		time.AfterFunc(time.Second*2, func() {
+			err := ClearRodTmpRootFolder(cacheRootDirPath)
+			if err != nil {
+				logger.Errorln("clear rod tmp root folder failed: ", err)
+			}
+		})
 	}()
 	vResult, err := browser.Version()
 	if err != nil {
@@ -79,7 +85,7 @@ func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 func GetADBlockLocalPath(cacheRootDirPath, httpProxyUrl string) string {
 	desFile, err := GetADBlock(cacheRootDirPath, httpProxyUrl)
 	if err != nil {
-		panic(errors.New(fmt.Sprintf("get adblock failed: %s", err)))
+		logger.Panicln(errors.New(fmt.Sprintf("get adblock failed: %s", err)))
 	}
 	if err = crx3.Extension(desFile).Unpack(); err != nil {
 		panic(errors.New("unpack adblock failed: " + err.Error()))

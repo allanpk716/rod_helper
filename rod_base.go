@@ -261,17 +261,25 @@ func NewBrowserInfo(browser *rod.Browser, userDataDir string) *BrowserInfo {
 }
 
 func (bi *BrowserInfo) Close() {
+
+	needClearFolder := bi.UserDataDir
+
 	if bi.Browser != nil {
 		_ = bi.Browser.Close()
 		bi.Browser = nil
 	}
-	if bi.UserDataDir != "" {
-		logger.Infoln("try clear UserDataDir:", bi.UserDataDir)
-		err := os.RemoveAll(bi.UserDataDir)
-		if err != nil {
-			logger.Errorln("clear UserDataDir failed:", err)
-		} else {
-			logger.Infoln("clear UserDataDir success")
-		}
+	if needClearFolder != "" {
+		logger.Infoln("try clear UserDataDir:", needClearFolder)
+
+		time.AfterFunc(2*time.Second, func() {
+			err := os.RemoveAll(needClearFolder)
+			if err != nil {
+				logger.Errorln("clear UserDataDir failed:", err)
+			} else {
+				logger.Infoln("clear UserDataDir success")
+			}
+		})
+	} else {
+		logger.Warningln("UserDataDir is empty")
 	}
 }
