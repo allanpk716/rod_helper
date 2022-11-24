@@ -128,6 +128,9 @@ func (b *Pool) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 		return nil, ErrProxyInfosIsEmpty
 	}
 
+	if b.httpProxyIndex > len(b.proxyInfos)-1 {
+		b.httpProxyIndex = 0
+	}
 	if b.proxyInfos[b.httpProxyIndex].skipAccessTime > nowUnixTime {
 		// 这个节点需要跳过
 		return b.proxyInfos[b.httpProxyIndex], ErrSkipAccessTime
