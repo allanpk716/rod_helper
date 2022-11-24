@@ -8,6 +8,7 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/pkg/errors"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -333,7 +334,7 @@ func (b *Pool) NewBrowser() (*BrowserInfo, error) {
 }
 
 func (b *Pool) Close() {
-
+	_ = os.RemoveAll(b.rodOptions.CacheRootDirPath())
 }
 
 type ProxyResult struct {

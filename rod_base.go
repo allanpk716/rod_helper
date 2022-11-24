@@ -266,6 +266,12 @@ func (bi *BrowserInfo) Close() {
 		bi.Browser = nil
 	}
 	if bi.UserDataDir != "" {
-		_ = os.RemoveAll(bi.UserDataDir)
+		logger.Infoln("try clear UserDataDir:", bi.UserDataDir)
+		err := os.RemoveAll(bi.UserDataDir)
+		if err != nil {
+			logger.Errorln("clear UserDataDir failed:", err)
+		} else {
+			logger.Infoln("clear UserDataDir success")
+		}
 	}
 }
