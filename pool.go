@@ -338,7 +338,9 @@ func (b *Pool) NewBrowser() (*BrowserInfo, error) {
 }
 
 func (b *Pool) Close() {
-	_ = os.RemoveAll(b.rodOptions.CacheRootDirPath())
+	time.AfterFunc(time.Second*2, func() {
+		_ = os.RemoveAll(b.rodOptions.CacheRootDirPath())
+	})
 }
 
 type ProxyResult struct {

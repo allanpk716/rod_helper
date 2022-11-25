@@ -18,7 +18,7 @@ func NewBrowserBase(tmpRootFolder, browserFPath, httpProxyURL string, loadAdbloc
 
 	var err error
 	// 随机的 rod 子文件夹名称
-	nowUserData := filepath.Join(tmpRootFolder, RandStringBytesMaskImprSrcSB(20))
+	nowUserData := filepath.Join(GetRodTmpRootFolder(tmpRootFolder), RandStringBytesMaskImprSrcSB(20))
 	err = os.MkdirAll(nowUserData, os.ModePerm)
 	if err != nil {
 		return nil, err
@@ -33,6 +33,7 @@ func NewBrowserBase(tmpRootFolder, browserFPath, httpProxyURL string, loadAdbloc
 
 			nowLancher = launcher.New().
 				Delete("disable-extensions").
+				// 这里要写的是缓存的根目录，不是 Browser 的目录
 				Set("load-extension", GetADBlockLocalPath(tmpRootFolder, httpProxyURL)).
 				Proxy(httpProxyURL).
 				Headless(false). // 插件模式需要设置这个

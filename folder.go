@@ -12,7 +12,7 @@ func GetRodTmpRootFolder(nowProcessRoot string) string {
 	if nowProcessRoot == "" {
 		nowProcessRoot = "."
 	}
-	nowProcessRoot = filepath.Join(nowProcessRoot, cacheRootFolderName, RodCacheFolder)
+	nowProcessRoot = filepath.Join(nowProcessRoot,  RodCacheFolder)
 	err := os.MkdirAll(nowProcessRoot, os.ModePerm)
 	if err != nil {
 		logger.Panicln(err)
@@ -69,7 +69,7 @@ func GetADBlockFolder(nowProcessRoot string) string {
 	if nowProcessRoot == "" {
 		nowProcessRoot = "."
 	}
-	nowProcessRoot = filepath.Join(nowProcessRoot, cacheRootFolderName, PluginFolder, ADBlockFolder)
+	nowProcessRoot = filepath.Join(nowProcessRoot, PluginFolder, ADBlockFolder)
 	err := os.MkdirAll(nowProcessRoot, os.ModePerm)
 	if err != nil {
 		logger.Panicln(err)
@@ -94,7 +94,6 @@ func GetADBlockUnZipFolder(nowProcessRoot string) string {
 
 // 缓存文件的位置信息，都是在程序的根目录下的 cache 中
 const (
-	cacheRootFolderName = "cache"         // 缓存文件夹总名称
 	RodCacheFolder      = "rod"           // rod 的缓存目录
 	PluginFolder        = "Plugin"        // 插件的目录
 	ADBlockFolder       = "adblock"       // adblock
