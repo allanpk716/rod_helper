@@ -8,6 +8,7 @@ import (
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/mediabuyerbot/go-crx3"
 	"github.com/pkg/errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -30,7 +31,7 @@ func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 			_ = browser.Close()
 		}
 
-		time.AfterFunc(time.Second*2, func() {
+		time.AfterFunc(time.Second*5, func() {
 			err := ClearRodTmpRootFolder(cacheRootDirPath)
 			if err != nil {
 				logger.Errorln("clear rod tmp root folder failed: ", err)
@@ -83,13 +84,32 @@ func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 
 // GetADBlockLocalPath 获取本地的 adblock 插件路径，如果不存在会自动去远程下载
 func GetADBlockLocalPath(cacheRootDirPath, httpProxyUrl string) string {
-	desFile, err := GetADBlock(cacheRootDirPath, httpProxyUrl)
+
+	var err error
+	var desFile string
+	for i := 1; i <= 5; i++ {
+
+		logger.Infoln("get adblock local path start... try:", i, "time")
+		desFile, err = GetADBlock(cacheRootDirPath, httpProxyUrl)
+		if err != nil {
+			logger.Errorln(fmt.Sprintf("get adblock failed %d tims: %s", i, err))
+			continue
+		}
+
+		if err = crx3.Extension(desFile).Unpack(); err != nil {
+			logger.Errorln(fmt.Sprintf("unpack adblock failed %d tims: %s", i, err.Error()))
+			logger.Infoln("try to remove adblock file: ", desFile)
+			if IsFile(desFile) == true {
+				_ = os.Remove(desFile)
+			}
+			continue
+		}
+		break
+	}
 	if err != nil {
-		logger.Panicln(errors.New(fmt.Sprintf("get adblock failed: %s", err)))
+		logger.Panicln("GetADBlockLocalPath: ", err)
 	}
-	if err = crx3.Extension(desFile).Unpack(); err != nil {
-		panic(errors.New("unpack adblock failed: " + err.Error()))
-	}
+
 	filenameOnly := strings.TrimSuffix(filepath.Base(desFile), filepath.Ext(desFile))
 
 	return filepath.Join(GetADBlockFolder(cacheRootDirPath), filenameOnly)
