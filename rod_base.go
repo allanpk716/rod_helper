@@ -272,7 +272,7 @@ func (bi *BrowserInfo) Close() {
 	if needClearFolder != "" {
 		logger.Infoln("try clear UserDataDir:", needClearFolder)
 
-		time.AfterFunc(2*time.Second, func() {
+		time.AfterFunc(5*time.Second, func() {
 			err := os.RemoveAll(needClearFolder)
 			if err != nil {
 				logger.Errorln("clear UserDataDir failed:", err)

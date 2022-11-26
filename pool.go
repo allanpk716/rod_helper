@@ -338,7 +338,7 @@ func (b *Pool) NewBrowser() (*BrowserInfo, error) {
 }
 
 func (b *Pool) Close() {
-	time.AfterFunc(time.Second*2, func() {
+	time.AfterFunc(time.Second*5, func() {
 		_ = os.RemoveAll(b.rodOptions.CacheRootDirPath())
 	})
 }

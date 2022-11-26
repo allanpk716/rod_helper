@@ -32,7 +32,8 @@ func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 		}
 
 		time.AfterFunc(time.Second*5, func() {
-			err := ClearRodTmpRootFolder(cacheRootDirPath)
+
+			err := os.RemoveAll(nowUserData)
 			if err != nil {
 				logger.Errorln("clear rod tmp root folder failed: ", err)
 			}
