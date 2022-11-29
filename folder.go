@@ -56,10 +56,7 @@ func ClearRodTmpRootFolder(nowProcessRoot string) error {
 func GetTmpFolderByName(nowProcessRoot, folderName string) string {
 	rootPath := GetRodTmpRootFolder(nowProcessRoot)
 	tmpFolderFullPath := filepath.Join(rootPath, folderName)
-	err := os.MkdirAll(tmpFolderFullPath, os.ModePerm)
-	if err != nil {
-		logger.Panicln(err)
-	}
+	_ = os.MkdirAll(tmpFolderFullPath, os.ModePerm)
 	return tmpFolderFullPath
 }
 

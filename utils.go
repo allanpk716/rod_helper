@@ -65,9 +65,11 @@ func WriteFile(desFileFPath string, bytes []byte) error {
 	}
 	// 创建对应的目录
 	nowDirPath := filepath.Dir(nowDesPath)
-	err = os.MkdirAll(nowDirPath, os.ModePerm)
-	if err != nil {
-		return err
+	if IsDir(nowDirPath) == false {
+		err = os.MkdirAll(nowDirPath, os.ModePerm)
+		if err != nil {
+			return err
+		}
 	}
 	file, err := os.Create(nowDesPath)
 	if err != nil {
