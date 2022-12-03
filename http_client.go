@@ -15,7 +15,7 @@ func NewHttpClient(opt *HttpClientOptions) (*resty.Client, error) {
 	var UserAgent string
 	// ------------------------------------------------
 	// 随机的 Browser
-	UserAgent = RandomUserAgent(opt.TmpRootFolder, opt.HttpProxyUrl)
+	UserAgent = RandomUserAgent()
 	// ------------------------------------------------
 	httpClient := resty.New().SetTransport(&http.Transport{
 		DisableKeepAlives:   true,

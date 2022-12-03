@@ -75,16 +75,16 @@ func NewPage(browser *rod.Browser) (*rod.Page, error) {
 
 func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
 
-	//ua := RandomUserAgent(true)
-	//err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
-	//	UserAgent: ua,
-	//})
-	//if err != nil {
-	//	if page != nil {
-	//		_ = page.Close()
-	//	}
-	//	return nil, nil, err
-	//}
+	ua := RandomUserAgent()
+	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
+		UserAgent: ua,
+	})
+	if err != nil {
+		if page != nil {
+			_ = page.Close()
+		}
+		return nil, nil, err
+	}
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
 	err := rod.Try(func() {

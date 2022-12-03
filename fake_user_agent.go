@@ -11,6 +11,38 @@ import (
 	"time"
 )
 
+func InitFakeUA(tmpRootFolder, httpProxyURL string) {
+
+	var err error
+	// 查看本地是否有缓存
+	uaRootPath := filepath.Join(".", "cache", "ua")
+	if IsDir(uaRootPath) == false {
+		err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
+		if err != nil {
+			logger.Panicln(err)
+		}
+	}
+
+	for i, subType := range subTypes {
+		uaFilePath := filepath.Join(uaRootPath, subType+".json")
+		if IsFile(uaFilePath) == false {
+			err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
+			if err != nil {
+				logger.Panicln(err)
+			}
+		}
+		uaInfo := UserAgentInfo{}
+		err = ToStruct(uaFilePath, &uaInfo)
+		if err != nil {
+			logger.Panicln(err)
+		}
+		allUANames = append(allUANames, uaInfo.UserAgents...)
+		logger.Infoln(i, subType, len(uaInfo.UserAgents))
+	}
+
+	logger.Infoln("InitFakeUA Done:", len(allUANames))
+}
+
 func GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL string) error {
 
 	/*
@@ -176,43 +208,13 @@ func parseUAAllPage(nowPage *rod.Page) error {
 	return nil
 }
 
-func RandomUserAgent(tmpRootFolder, httpProxyURL string) string {
-
-	var err error
-	// 是否已经读取过本地的缓存
-	if len(allUANames) > 0 {
-		return allUANames[rand.Intn(len(allUANames))]
-	}
-	// 查看本地是否有缓存
-	uaRootPath := filepath.Join(".", "cache", "ua")
-	if IsDir(uaRootPath) == false {
-		err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
-		if err != nil {
-			logger.Panicln(err)
-		}
-	}
-	for i, subType := range subTypes {
-		uaFilePath := filepath.Join(uaRootPath, subType+".json")
-		if IsFile(uaFilePath) == false {
-			err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
-			if err != nil {
-				logger.Panicln(err)
-			}
-		}
-		uaInfo := UserAgentInfo{}
-		err = ToStruct(uaFilePath, &uaInfo)
-		if err != nil {
-			logger.Panicln(err)
-		}
-		allUANames = append(allUANames, uaInfo.UserAgents...)
-		logger.Infoln(i, subType, len(uaInfo.UserAgents))
-	}
+func RandomUserAgent() string {
 
 	// 是否已经读取过本地的缓存
 	if len(allUANames) > 0 {
 		return allUANames[rand.Intn(len(allUANames))]
 	} else {
-		logger.Panicln("RandomUserAgent is empty")
+		logger.Panicln("RandomUserAgent is empty, Need Call InitFakeUA()")
 	}
 
 	return ""
