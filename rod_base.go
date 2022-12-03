@@ -73,21 +73,23 @@ func NewPage(browser *rod.Browser) (*rod.Page, error) {
 	return page, err
 }
 
-func PageNavigate(page *rod.Page, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
+func PageNavigate(page *rod.Page, randomUA bool, desURL string, timeOut time.Duration) (*rod.Page, *proto.NetworkResponseReceived, error) {
 
-	ua := RandomUserAgent()
-	err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
-		UserAgent: ua,
-	})
-	if err != nil {
-		if page != nil {
-			_ = page.Close()
+	if randomUA == true {
+		ua := RandomUserAgent()
+		err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
+			UserAgent: ua,
+		})
+		if err != nil {
+			if page != nil {
+				_ = page.Close()
+			}
+			return nil, nil, err
 		}
-		return nil, nil, err
 	}
 	var e proto.NetworkResponseReceived
 	wait := page.WaitEvent(&e)
-	err = rod.Try(func() {
+	err := rod.Try(func() {
 		page.Timeout(timeOut).MustNavigate(desURL)
 		wait()
 	})
@@ -214,7 +216,7 @@ func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []stri
 
 	for _, publicIPSite := range customPublicIPSites {
 
-		publicIPPage, _, err := PageNavigate(page, publicIPSite, timeOut)
+		publicIPPage, _, err := PageNavigate(page, true, publicIPSite, timeOut)
 		if err != nil {
 			return "", err
 		}

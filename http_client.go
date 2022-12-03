@@ -50,17 +50,15 @@ func NewHttpClient(opt *HttpClientOptions) (*resty.Client, error) {
 }
 
 type HttpClientOptions struct {
-	TmpRootFolder string
-	HTMLTimeOut   time.Duration
-	HttpProxyUrl  string
-	Referer       string
+	HTMLTimeOut  time.Duration
+	HttpProxyUrl string
+	Referer      string
 }
 
-func NewHttpClientOptions(tmpRootFolder string, HTMLTimeOut time.Duration, httpProxyUrl string, referer string) *HttpClientOptions {
+func NewHttpClientOptions(HTMLTimeOut time.Duration, httpProxyUrl string, referer string) *HttpClientOptions {
 	return &HttpClientOptions{
-		TmpRootFolder: tmpRootFolder,
-		HTMLTimeOut:   HTMLTimeOut,
-		HttpProxyUrl:  httpProxyUrl,
-		Referer:       referer,
+		HTMLTimeOut:  HTMLTimeOut,
+		HttpProxyUrl: httpProxyUrl,
+		Referer:      referer,
 	}
 }

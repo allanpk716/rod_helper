@@ -58,7 +58,7 @@ func GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL string) error {
 		6. Mozilla
 	*/
 	// 直接查找所有的 A 的链接，然后读取 href 信息，匹配 <a href="/pages/Chrome/ " class="unterMenuName">Chrome</a>
-	nowBrowser, err := NewBrowserBase(tmpRootFolder, "", httpProxyURL, true, false)
+	nowBrowser, err := NewBrowserBase(tmpRootFolder, "", httpProxyURL, false, false)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func parseUAAllPage(nowPage *rod.Page) error {
 	const allInfoPage = "https://useragentstring.com/pages/useragentstring.php"
 	var err error
 	var p *proto.NetworkResponseReceived
-	nowPage, p, err = PageNavigate(nowPage, allInfoPage, 15*time.Second)
+	nowPage, p, err = PageNavigate(nowPage, false, allInfoPage, 15*time.Second)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func parseUAAllPage(nowPage *rod.Page) error {
 		for index, uaUrl := range uaUrls {
 
 			logger.Infoln(uaName, index, uaUrl)
-			nowPage, p, err = PageNavigate(nowPage, uaUrl, 15*time.Second)
+			nowPage, p, err = PageNavigate(nowPage, false, uaUrl, 15*time.Second)
 			if err != nil {
 				return err
 			}
