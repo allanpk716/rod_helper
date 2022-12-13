@@ -1,6 +1,7 @@
 package rod_helper
 
 import (
+	_ "embed"
 	"github.com/WQGroup/logger"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
@@ -13,34 +14,62 @@ import (
 
 func InitFakeUA(tmpRootFolder, httpProxyURL string) {
 
+	// 初始化
+	browserUAs = [][]byte{ChromeJson, EdgeJson, FirefoxJson, OperaJson, SafariJson, MozillaJson}
+
 	var err error
 	// 查看本地是否有缓存
 	uaRootPath := filepath.Join(".", "cache", "ua")
 	if IsDir(uaRootPath) == false {
 		err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
 		if err != nil {
-			logger.Panicln(err)
+			logger.Warningln("GetFakeUserAgentDataCache Error, will load inside cache:", err)
+			// 如果读取失败，就从本程序中获取缓存好的信息来使用
+			readLocalCache(tmpRootFolder, httpProxyURL, false)
 		}
+	} else {
+		// 从本地获取
+		readLocalCache(tmpRootFolder, httpProxyURL, true)
 	}
+	logger.Infoln("InitFakeUA Done:", len(allUANames))
+}
 
-	for i, subType := range subTypes {
-		uaFilePath := filepath.Join(uaRootPath, subType+".json")
-		if IsFile(uaFilePath) == false {
-			err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
+func readLocalCache(tmpRootFolder, httpProxyURL string, outSideAssets bool)  {
+
+	var err error
+
+	if outSideAssets == true {
+		// 从外部获取
+		uaRootPath := filepath.Join(".", "cache", "ua")
+		for i, subType := range subTypes {
+
+			uaFilePath := filepath.Join(uaRootPath, subType+".json")
+			if IsFile(uaFilePath) == false {
+				err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
+				if err != nil {
+					logger.Panicln(err)
+				}
+			}
+			uaInfo := UserAgentInfo{}
+			err = ToStruct(uaFilePath, &uaInfo)
 			if err != nil {
 				logger.Panicln(err)
 			}
+			allUANames = append(allUANames, uaInfo.UserAgents...)
+			logger.Infoln(i, subType, len(uaInfo.UserAgents))
 		}
-		uaInfo := UserAgentInfo{}
-		err = ToStruct(uaFilePath, &uaInfo)
-		if err != nil {
-			logger.Panicln(err)
-		}
-		allUANames = append(allUANames, uaInfo.UserAgents...)
-		logger.Infoln(i, subType, len(uaInfo.UserAgents))
-	}
+	} else {
+		for i, browserUA := range browserUAs {
 
-	logger.Infoln("InitFakeUA Done:", len(allUANames))
+			uaInfo := UserAgentInfo{}
+			err = BytesToStruct(browserUA, &uaInfo)
+			if err != nil {
+				logger.Panicln(err)
+			}
+			allUANames = append(allUANames, uaInfo.UserAgents...)
+			logger.Infoln(i, uaInfo.SubType, len(uaInfo.UserAgents))
+		}
+	}
 }
 
 func GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL string) error {
@@ -273,4 +302,26 @@ var (
 		Safari,
 		Mozilla,
 	}
+)
+
+var browserUAs  [][]byte
+
+var (
+	//go:embed assets/ua/Chrome.json
+	ChromeJson []byte
+
+	//go:embed assets/ua/Edge.json
+	EdgeJson []byte
+
+	//go:embed assets/ua/Firefox.json
+	FirefoxJson []byte
+
+	//go:embed assets/ua/Opera.json
+	OperaJson []byte
+
+	//go:embed assets/ua/Safari.json
+	SafariJson []byte
+
+	//go:embed assets/ua/Mozilla.json
+	MozillaJson []byte
 )

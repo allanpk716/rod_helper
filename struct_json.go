@@ -45,10 +45,19 @@ func ToStruct(desJsonFileFPath string, output interface{}) error {
 		return err
 	}
 
-	err = json.Unmarshal(bytes, output)
+	err = BytesToStruct(bytes, output)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+// BytesToStruct 传入的必须是指针
+func BytesToStruct(bytes []byte, output interface{}) error {
+	err := json.Unmarshal(bytes, output)
+	if err != nil {
+		return err
+	}
 	return nil
 }
