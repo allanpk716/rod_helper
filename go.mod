@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/WQGroup/logger v0.0.6
-	github.com/allanpk716/fake-useragent v0.2.1
 	github.com/bodgit/sevenzip v1.3.0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/go-rod/rod v0.112.0
@@ -16,10 +15,7 @@ require (
 )
 
 require (
-	github.com/EDDYCJY/fake-useragent v0.2.0 // indirect
-	github.com/PuerkitoBio/goquery v1.8.0 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
-	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/bodgit/plumbing v1.2.0 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/connesc/cipherio v0.2.1 // indirect

@@ -62,6 +62,12 @@ func NewBrowserBase(tmpRootFolder, browserFPath, httpProxyURL string, loadAdbloc
 		return nil, err
 	}
 
+	// 忽略证书错误
+	err = browser.IgnoreCertErrors(true)
+	if err != nil {
+		return nil, err
+	}
+
 	return NewBrowserInfo(browser, nowUserData), nil
 }
 
