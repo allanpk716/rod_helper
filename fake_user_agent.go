@@ -26,6 +26,9 @@ func InitFakeUA(tmpRootFolder, httpProxyURL string) {
 			logger.Warningln("GetFakeUserAgentDataCache Error, will load inside cache:", err)
 			// 如果读取失败，就从本程序中获取缓存好的信息来使用
 			readLocalCache(tmpRootFolder, httpProxyURL, false)
+		} else {
+			// 从本地获取
+			readLocalCache(tmpRootFolder, httpProxyURL, true)
 		}
 	} else {
 		// 从本地获取
