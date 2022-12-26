@@ -279,6 +279,10 @@ func (bi *BrowserInfo) Close() {
 		bi.Browser = nil
 	}
 	if needClearFolder != "" {
+
+		if IsDir(needClearFolder) == false {
+			return
+		}
 		logger.Infoln("try clear UserDataDir:", needClearFolder)
 
 		time.AfterFunc(5*time.Second, func() {

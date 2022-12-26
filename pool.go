@@ -25,6 +25,7 @@ type Pool struct {
 	httpProxyLocker sync.Mutex           // http 代理的锁
 	lbHttpUrl       string               // 负载均衡的 http proxy url
 	lbPort          int                  // 负载均衡 http 端口
+	browserInfos    []*BrowserInfo       // 每次新建的浏览器信息缓存指针
 	proxyInfos      []*XrayPoolProxyInfo // XrayPool 中的代理信息
 }
 
@@ -89,6 +90,8 @@ func NewPool(browserOptions *PoolOptions) *Pool {
 	b.lbPort = proxyResult.LBPort
 
 	b.lbHttpUrl = fmt.Sprintf(httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(b.lbPort))
+
+	b.browserInfos = make([]*BrowserInfo, 0)
 
 	return b
 }
@@ -334,10 +337,19 @@ func (b *Pool) NewBrowser() (*BrowserInfo, error) {
 		return nil, errors.New("NewBrowser.NewBrowserBase error:" + err.Error())
 	}
 
+	// 加入缓存列表
+	b.browserInfos = append(b.browserInfos, oneBrowserInfo)
+
 	return oneBrowserInfo, nil
 }
 
 func (b *Pool) Close() {
+
+	for _, browserInfo := range b.browserInfos {
+		if browserInfo != nil && browserInfo.Browser != nil {
+			_ = browserInfo.Browser.Close()
+		}
+	}
 	time.AfterFunc(time.Second*5, func() {
 		_ = os.RemoveAll(b.rodOptions.CacheRootDirPath())
 	})
