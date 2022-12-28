@@ -16,7 +16,11 @@ func NewHttpClient(opt *HttpClientOptions) (*resty.Client, error) {
 	// 随机的 Browser
 	UserAgent = RandomUserAgent()
 	// ------------------------------------------------
-	httpClient := resty.New()
+	httpClient := resty.New().SetTransport(&http.Transport{
+		DisableKeepAlives:   true,
+		MaxIdleConns:        1000,
+		MaxIdleConnsPerHost: 1000,
+	})
 	httpClient.SetTimeout(opt.htmlTimeOut)
 	httpClient.SetRetryCount(1)
 	// ------------------------------------------------
