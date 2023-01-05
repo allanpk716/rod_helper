@@ -37,7 +37,7 @@ func InitFakeUA(tmpRootFolder, httpProxyURL string) {
 	logger.Infoln("InitFakeUA Done:", len(allUANames))
 }
 
-func readLocalCache(tmpRootFolder, httpProxyURL string, outSideAssets bool)  {
+func readLocalCache(tmpRootFolder, httpProxyURL string, outSideAssets bool) {
 
 	var err error
 
@@ -140,7 +140,7 @@ func parseUAAllPage(nowPage *rod.Page) error {
 		return errors.New("StatusCodeCheck Error")
 	}
 	pageAllXPath := "//*[@id=\"menu\"]/a[2]"
-	pageLoaded := HasPageLoaded(nowPage, pageAllXPath, 15)
+	pageLoaded := HasPageLoaded(nowPage, []string{pageAllXPath}, 15)
 	if pageLoaded == false {
 		return errors.New("HasPageLoaded == false")
 	}
@@ -191,7 +191,7 @@ func parseUAAllPage(nowPage *rod.Page) error {
 				// 跳过后续的逻辑，不需要再次访问
 				return errors.New("StatusCodeCheck Error")
 			}
-			pageLoaded = HasPageLoaded(nowPage, pageAllXPath, 15)
+			pageLoaded = HasPageLoaded(nowPage, []string{pageAllXPath}, 15)
 			if pageLoaded == false {
 				return errors.New("HasPageLoaded == false")
 			}
@@ -307,7 +307,7 @@ var (
 	}
 )
 
-var browserUAs  [][]byte
+var browserUAs [][]byte
 
 var (
 	//go:embed assets/ua/Chrome.json
