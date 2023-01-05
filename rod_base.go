@@ -240,12 +240,14 @@ func GetPublicIP(page *rod.Page, timeOut time.Duration, customDectIPSites []stri
 }
 
 // HasPageLoaded 通过一个 Element 的 XPath 判断是否页面加载完毕
-func HasPageLoaded(page *rod.Page, targetElementXPath string, timeOut int) bool {
+func HasPageLoaded(page *rod.Page, targetElementXPaths []string, timeOut int) bool {
 
 	for {
-		foundEle, _, _ := page.Timeout(1 * time.Second).HasX(targetElementXPath)
-		if foundEle == true {
-			return true
+		for _, targetElementXPath := range targetElementXPaths {
+			foundEle, _, _ := page.Timeout(300 * time.Millisecond).HasX(targetElementXPath)
+			if foundEle == true {
+				return true
+			}
 		}
 		// Timeout check
 		if timeOut < 1 {
