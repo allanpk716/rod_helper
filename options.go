@@ -63,12 +63,16 @@ func (r *PoolOptions) BrowserInstanceCount() int {
 	return r.browserInstanceCount
 }
 
-func (r *PoolOptions) SetLoadAdblock(loadAdblock bool)  {
+func (r *PoolOptions) SetLoadAdblock(loadAdblock bool) {
 	r.loadAdblock = loadAdblock
 }
 
 func (r *PoolOptions) LoadAdblock() bool {
 	return r.loadAdblock
+}
+
+func (r *PoolOptions) SetLoadPicture(loadPic bool) {
+	r.loadPic = loadPic
 }
 
 func (r *PoolOptions) LoadPicture() bool {
