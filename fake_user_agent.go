@@ -12,28 +12,33 @@ import (
 	"time"
 )
 
-func InitFakeUA(tmpRootFolder, httpProxyURL string) {
+func InitFakeUA(UseInsideData bool, tmpRootFolder, httpProxyURL string) {
 
 	// 初始化
 	browserUAs = [][]byte{ChromeJson, EdgeJson, FirefoxJson, OperaJson, SafariJson, MozillaJson}
 
-	var err error
-	// 查看本地是否有缓存
-	uaRootPath := filepath.Join(".", "cache", "ua")
-	if IsDir(uaRootPath) == false {
-		err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
-		if err != nil {
-			logger.Warningln("GetFakeUserAgentDataCache Error, will load inside cache:", err)
-			// 如果读取失败，就从本程序中获取缓存好的信息来使用
-			readLocalCache(tmpRootFolder, httpProxyURL, false)
+	if UseInsideData == true {
+		readLocalCache(tmpRootFolder, httpProxyURL, false)
+	} else {
+		var err error
+		// 查看本地是否有缓存
+		uaRootPath := filepath.Join(".", "cache", "ua")
+		if IsDir(uaRootPath) == false {
+			err = GetFakeUserAgentDataCache(tmpRootFolder, httpProxyURL)
+			if err != nil {
+				logger.Warningln("GetFakeUserAgentDataCache Error, will load inside cache:", err)
+				// 如果读取失败，就从本程序中获取缓存好的信息来使用
+				readLocalCache(tmpRootFolder, httpProxyURL, false)
+			} else {
+				// 从本地获取
+				readLocalCache(tmpRootFolder, httpProxyURL, true)
+			}
 		} else {
 			// 从本地获取
 			readLocalCache(tmpRootFolder, httpProxyURL, true)
 		}
-	} else {
-		// 从本地获取
-		readLocalCache(tmpRootFolder, httpProxyURL, true)
 	}
+
 	logger.Infoln("InitFakeUA Done:", len(allUANames))
 }
 
