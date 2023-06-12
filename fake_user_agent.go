@@ -39,7 +39,7 @@ func InitFakeUA(UseInsideData bool, tmpRootFolder, httpProxyURL string) {
 		}
 	}
 
-	logger.Infoln("InitFakeUA Done:", len(allUANames))
+	logger.Debugln("InitFakeUA Done:", len(allUANames))
 }
 
 func readLocalCache(tmpRootFolder, httpProxyURL string, outSideAssets bool) {
@@ -64,7 +64,7 @@ func readLocalCache(tmpRootFolder, httpProxyURL string, outSideAssets bool) {
 				logger.Panicln(err)
 			}
 			allUANames = append(allUANames, uaInfo.UserAgents...)
-			logger.Infoln(i, subType, len(uaInfo.UserAgents))
+			logger.Debugln(i, subType, len(uaInfo.UserAgents))
 		}
 	} else {
 		for i, browserUA := range browserUAs {
@@ -75,7 +75,7 @@ func readLocalCache(tmpRootFolder, httpProxyURL string, outSideAssets bool) {
 				logger.Panicln(err)
 			}
 			allUANames = append(allUANames, uaInfo.UserAgents...)
-			logger.Infoln(i, uaInfo.SubType, len(uaInfo.UserAgents))
+			logger.Debugln(i, uaInfo.SubType, len(uaInfo.UserAgents))
 		}
 	}
 }
@@ -163,7 +163,7 @@ func parseUAAllPage(nowPage *rod.Page) error {
 				continue
 			}
 			nowElUrlPath := el.MustProperty("href")
-			logger.Infoln(i, elString, nowElUrlPath)
+			logger.Debugln(i, elString, nowElUrlPath)
 			_, found := uaUrlMap[elString]
 			if found == false {
 				uaUrlMap[elString] = make([]string, 0)
@@ -180,7 +180,7 @@ func parseUAAllPage(nowPage *rod.Page) error {
 		uaResultMap[uaName] = make([]string, 0)
 		for index, uaUrl := range uaUrls {
 
-			logger.Infoln(uaName, index, uaUrl)
+			logger.Debugln(uaName, index, uaUrl)
 			nowPage, p, err = PageNavigate(nowPage, false, uaUrl, 15*time.Second)
 			if err != nil {
 				return err
@@ -235,7 +235,7 @@ func parseUAAllPage(nowPage *rod.Page) error {
 		}
 
 		desSaveFPath := filepath.Join(saveRootPath, uaName+".json")
-		logger.Infoln("uaName:", uaName, desSaveFPath)
+		logger.Debugln("uaName:", uaName, desSaveFPath)
 		err = ToFile(desSaveFPath, nowInfo)
 		if err != nil {
 			return err
