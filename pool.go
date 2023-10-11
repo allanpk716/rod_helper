@@ -8,6 +8,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/panjf2000/ants/v2"
+
 	"github.com/pkg/errors"
 	"github.com/ysmood/gson"
 	"net/http"
@@ -22,15 +23,17 @@ import (
 )
 
 type Pool struct {
-	log               *logrus.Logger
-	rodOptions        *PoolOptions                    // 参数
-	httpProxyIndex    int                             // 当前使用的 http 代理的索引
-	httpProxyLocker   sync.Mutex                      // http 代理的锁
-	lbHttpUrl         string                          // 负载均衡的 http proxy url
-	lbPort            int                             // 负载均衡 http 端口
-	proxyInfos        []*XrayPoolProxyInfo            // XrayPool 中的代理信息
-	filterProxyInfos  map[string][]*XrayPoolProxyInfo // 过滤后的代理信息
-	filterProxyLocker sync.Mutex                      // 过滤代理的锁
+	log                      *logrus.Logger
+	rodOptions               *PoolOptions         // 参数
+	nowOrgProxyIndex         int                  // 当前使用的 http 代理的索引
+	httpProxyLocker          sync.Mutex           // http 代理的锁
+	lbHttpUrl                string               // 负载均衡的 http proxy url
+	lbPort                   int                  // 负载均衡 http 端口
+	orgProxyInfos            []*XrayPoolProxyInfo // XrayPool 中的代理信息
+	filterProxyInfoIndexList map[string][]int     // 过滤后的代理信息
+	nowFilterProxyInfoIndex  map[string]int       // 过滤后的代理信息的索引
+	filterProxyLocker        sync.Mutex           // 过滤代理的锁
+	nowKeyName               string               // 当前使用的 keyName，如果是空，那么就是默认使用全部的代理列表，如果指定了，那么就是指定过滤后的列表
 }
 
 // NewPool 面向与爬虫的时候使用 Pool
@@ -71,9 +74,9 @@ func NewPool(browserOptions *PoolOptions) *Pool {
 	}
 
 	b := &Pool{
-		log:        browserOptions.Log,
-		rodOptions: browserOptions,
-		proxyInfos: make([]*XrayPoolProxyInfo, 0),
+		log:           browserOptions.Log,
+		rodOptions:    browserOptions,
+		orgProxyInfos: make([]*XrayPoolProxyInfo, 0),
 	}
 
 	for index, result := range proxyResult.OpenResultList {
@@ -89,13 +92,13 @@ func NewPool(browserOptions *PoolOptions) *Pool {
 			skipAccessTime: 0,
 			lastAccessTime: 0,
 		}
-		b.proxyInfos = append(b.proxyInfos, &tmpProxyInfos)
+		b.orgProxyInfos = append(b.orgProxyInfos, &tmpProxyInfos)
 	}
 	b.lbPort = proxyResult.LBPort
 
 	b.lbHttpUrl = fmt.Sprintf(httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(b.lbPort))
 
-	b.filterProxyInfos = make(map[string][]*XrayPoolProxyInfo)
+	b.filterProxyInfoIndexList = make(map[string][]int)
 
 	return b
 }
@@ -115,10 +118,26 @@ func (b *Pool) LBHttpUrl() string {
 	return b.lbHttpUrl
 }
 
+func (b *Pool) SetKeyName(keyName string) error {
+
+	b.httpProxyLocker.Lock()
+	defer b.httpProxyLocker.Unlock()
+	b.nowKeyName = keyName
+	// 当设置了现在需要获取的索引信息 KeyName 的时候
+	nowProxyInfoIndexs, ok := b.filterProxyInfoIndexList[b.nowKeyName]
+	if ok == false {
+		return ErrKeyNameIsNotExist
+	}
+	if len(nowProxyInfoIndexs) < 1 {
+		return ErrProxyInfosIsEmpty
+	}
+	return nil
+}
+
 // Filter 传入一批需要进行测试的 URL，然后过滤掉不可用的代理
 func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) error {
 
-	if len(b.proxyInfos) < 1 {
+	if len(b.orgProxyInfos) < 1 {
 		return ErrProxyInfosIsEmpty
 	}
 	statusCodeInfos := []StatusCodeInfo{
@@ -149,8 +168,8 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 		defer nowBrowser.Close()
 	}
 	// 清理
-	b.filterProxyInfos[fInfo.Key] = make([]*XrayPoolProxyInfo, 0)
-	logger.Infoln("Pool.Filter", fInfo.Key, "Start...")
+	b.filterProxyInfoIndexList[fInfo.KeyName] = make([]int, 0)
+	logger.Infoln("Pool.Filter", fInfo.KeyName, "Start...")
 	var wg sync.WaitGroup
 	p, err := ants.NewPoolWithFunc(threadSize, func(inData interface{}) {
 		deliveryInfo := inData.(DeliveryInfo)
@@ -186,7 +205,7 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 			}
 			// 加入缓存列表
 			b.filterProxyLocker.Lock()
-			b.filterProxyInfos[fInfo.Key] = append(b.filterProxyInfos[fInfo.Key], deliveryInfo.ProxyInfo)
+			b.filterProxyInfoIndexList[fInfo.KeyName] = append(b.filterProxyInfoIndexList[fInfo.KeyName], deliveryInfo.ProxyInfo.Index)
 			b.filterProxyLocker.Unlock()
 		}
 	})
@@ -194,7 +213,7 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 		return err
 	}
 	// 过滤
-	for _, proxyInfo := range b.proxyInfos {
+	for _, proxyInfo := range b.orgProxyInfos {
 		wg.Add(1)
 
 		err = p.Invoke(DeliveryInfo{
@@ -210,18 +229,24 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 	}
 
 	wg.Wait()
+	// 设置索引
+	b.nowFilterProxyInfoIndex[fInfo.KeyName] = 0
 
-	logger.Infoln("Pool.Filter", fInfo.Key, "End")
+	logger.Infoln("Pool.Filter", fInfo.KeyName, "End")
 
 	return nil
 }
 
-func (b *Pool) GetFilterProxyInfos(keyName string) ([]*XrayPoolProxyInfo, error) {
-	if len(b.proxyInfos) < 1 {
+func (b *Pool) GetFilterProxyInfos(keyName string) ([]int, error) {
+	if len(b.orgProxyInfos) < 1 {
 		return nil, ErrProxyInfosIsEmpty
 	}
 
-	return b.filterProxyInfos[keyName], nil
+	return b.filterProxyInfoIndexList[keyName], nil
+}
+
+func (b *Pool) GetProxyInfos() []*XrayPoolProxyInfo {
+	return b.orgProxyInfos
 }
 
 // GetOneProxyInfo 轮询获取一个代理实例，直接给出这个代理的信息，不会考虑访问的频率问题
@@ -229,49 +254,41 @@ func (b *Pool) GetOneProxyInfo() (*XrayPoolProxyInfo, error) {
 
 	b.httpProxyLocker.Lock()
 	nowUnixTime := time.Now().Unix()
+
 	defer func() {
 		// 记录最后一次获取这个 Index ProxyInfo 的 UnixTime
-		b.proxyInfos[b.httpProxyIndex].lastAccessTime = nowUnixTime
+		b.orgProxyInfos[b.getNowProxyIndex()].lastAccessTime = nowUnixTime
 		// 下一个节点
-		b.httpProxyIndex++
-		if b.httpProxyIndex >= len(b.proxyInfos) {
-			b.httpProxyIndex = 0
-		}
+		b.addNowProxyIndex()
 		b.httpProxyLocker.Unlock()
 	}()
 
-	if len(b.proxyInfos) < 1 {
-		return nil, ErrProxyInfosIsEmpty
-	}
-
-	if b.httpProxyIndex > len(b.proxyInfos)-1 {
-		b.httpProxyIndex = 0
-	}
-	if b.proxyInfos[b.httpProxyIndex].skipAccessTime > nowUnixTime {
+	if b.orgProxyInfos[b.getNowProxyIndex()].skipAccessTime > nowUnixTime {
 		// 这个节点需要跳过
-		return b.proxyInfos[b.httpProxyIndex], ErrSkipAccessTime
+		return b.orgProxyInfos[b.getNowProxyIndex()], ErrSkipAccessTime
 	}
 
-	return b.proxyInfos[b.httpProxyIndex], nil
+	return b.orgProxyInfos[b.getNowProxyIndex()], nil
 }
 
 // SetProxyNodeSkipByTime 设置这个节点，等待多少秒之后才可以被再次使用，仅仅针对 GetOneProxyInfo、GetProxyInfoSync 有效
 func (b *Pool) SetProxyNodeSkipByTime(index int, targetSkipTime int64) error {
+
 	b.httpProxyLocker.Lock()
 	defer func() {
 		b.httpProxyLocker.Unlock()
 	}()
 
-	if len(b.proxyInfos) < 1 {
+	if len(b.orgProxyInfos) < 1 {
 		return ErrProxyInfosIsEmpty
 	}
 
-	if index >= len(b.proxyInfos) {
+	if index >= len(b.orgProxyInfos) {
 		return ErrIndexIsOutOfRange
 	}
 
 	b.log.Infoln("SetProxyNodeSkipByTime", index, targetSkipTime)
-	b.proxyInfos[index].skipAccessTime = targetSkipTime
+	b.orgProxyInfos[index].skipAccessTime = targetSkipTime
 	return nil
 }
 
@@ -284,7 +301,7 @@ func (b *Pool) GetProxyInfoSync(baseUrl string) (*XrayPoolProxyInfo, error) {
 		// 获取下一个代理的信息
 		outProxyInfo, err = b.GetOneProxyInfo()
 		if err != nil {
-			// 这里的错误要区分一种，就是跳过的节点的情况
+			// 这里的错误要区分一种，就是跳过的节点的情况xuejian
 			if errors.Is(err, ErrSkipAccessTime) {
 				// 可以接收的错误，等待循环
 				b.log.Debugln("Skip Access Time Proxy:", outProxyInfo.Name, outProxyInfo.Index, baseUrl)
@@ -532,21 +549,21 @@ func (b *Pool) NewBrowserWithRandomProxy() (*BrowserInfo, error) {
 
 	b.httpProxyLocker.Lock()
 	defer func() {
-		b.httpProxyIndex++
+		b.nowOrgProxyIndex++
 		b.httpProxyLocker.Unlock()
 	}()
 
-	if len(b.proxyInfos) < 1 {
+	if len(b.orgProxyInfos) < 1 {
 		return nil, ErrProxyInfosIsEmpty
 	}
 
-	if b.httpProxyIndex >= len(b.proxyInfos) {
-		b.httpProxyIndex = 0
+	if b.nowOrgProxyIndex >= len(b.orgProxyInfos) {
+		b.nowOrgProxyIndex = 0
 	}
 
 	cachePath := b.rodOptions.CacheRootDirPath()
 	oneBrowserInfo, err := NewBrowserBase(cachePath,
-		b.rodOptions.BrowserFPath(), b.proxyInfos[b.httpProxyIndex].HttpUrl,
+		b.rodOptions.BrowserFPath(), b.orgProxyInfos[b.nowOrgProxyIndex].HttpUrl,
 		b.rodOptions.LoadAdblock(), b.rodOptions.LoadPicture())
 	if err != nil {
 		return nil, errors.New("NewBrowserWithRandomProxy.NewBrowserBase error:" + err.Error())
@@ -720,3 +737,41 @@ func (b *Pool) Close() {
 		_ = os.RemoveAll(b.rodOptions.CacheRootDirPath())
 	})
 }
+
+func (b *Pool) getNowProxyIndex() int {
+
+	if b.nowOrgProxyIndex >= len(b.orgProxyInfos)-1 {
+		b.nowOrgProxyIndex = 0
+	}
+	return b.nowOrgProxyIndex
+}
+
+func (b *Pool) addNowProxyIndex() {
+
+	defer func() {
+		if b.nowKeyName == "" {
+			// 全部的 index
+			if b.nowOrgProxyIndex >= len(b.orgProxyInfos)-1 {
+				b.nowOrgProxyIndex = 0
+			}
+		} else {
+			// 具体一个 KeyName 的 index
+			// 需要将对应的 KeyName 的 index 清单中的索引对应到全列表的索引
+			if b.nowOrgProxyIndex >= len(b.orgProxyInfos) {
+				b.nowOrgProxyIndex = b.filterProxyInfoIndexList[b.nowKeyName][0]
+			}
+		}
+	}()
+
+	if b.nowKeyName == "" {
+		// 全部的 index
+		b.nowOrgProxyIndex++
+	} else {
+		// 具体一个 KeyName 的 index
+		// 需要将对应的 KeyName 的 index 清单中的索引对应到全列表的索引
+		b.nowFilterProxyInfoIndex[b.nowKeyName]++
+		b.nowOrgProxyIndex = b.filterProxyInfoIndexList[b.nowKeyName][b.nowFilterProxyInfoIndex[b.nowKeyName]]
+	}
+}
+
+var ErrKeyNameIsNotExist = errors.New("key name is not exist")

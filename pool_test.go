@@ -31,11 +31,11 @@ func TestNewMultiBrowser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	proxyInfos, err := b.GetFilterProxyInfos(fInfo.Key)
+	proxyInfos, err := b.GetFilterProxyInfos(fInfo.KeyName)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, proxy := range proxyInfos {
-		println(proxy.Index, proxy.Name)
+		println(b.GetProxyInfos()[proxy].Index, b.GetProxyInfos()[proxy].Name)
 	}
 }

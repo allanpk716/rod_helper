@@ -61,12 +61,12 @@ func (s PageCheck) String() string {
 }
 
 type FilterInfo struct {
-	Key       string     // 这次目标网站的关键词
+	KeyName   string     // 这次目标网站的关键词
 	PageInfos []PageInfo // 需要测试的 UrlInfo
 }
 
 func NewFilterInfo(key string, needTestUrlInfos []PageInfo) *FilterInfo {
-	return &FilterInfo{Key: key, PageInfos: needTestUrlInfos}
+	return &FilterInfo{KeyName: key, PageInfos: needTestUrlInfos}
 }
 
 type PageInfo struct {
