@@ -99,7 +99,7 @@ func NewPool(browserOptions *PoolOptions) *Pool {
 	b.lbHttpUrl = fmt.Sprintf(httpPrefix + browserOptions.XrayPoolUrl() + ":" + strconv.Itoa(b.lbPort))
 
 	b.filterProxyInfoIndexList = make(map[string][]int)
-
+	b.nowFilterProxyInfoIndex = make(map[string]int)
 	return b
 }
 
