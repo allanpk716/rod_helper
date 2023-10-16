@@ -151,13 +151,19 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 	if err != nil {
 		return err
 	}
-	if updateTime < time.Now().AddDate(0, 0, -1).Unix() {
-		// 如果缓存的时间超过了一天，那么就需要重新过滤
-	} else {
-		// 如果缓存的时间没有超过一天，那么就不需要重新过滤了
-		logger.Infoln("Pool.Filter", fInfo.KeyName, "Not Need Filter")
-		return nil
+	// 但是还要考虑这个 fInfo.KeyName 是否有过滤列表了，且这个列表不为空
+	_, found := b.filterProxyInfoIndexList[fInfo.KeyName]
+	if found == true && len(b.filterProxyInfoIndexList[fInfo.KeyName]) > 0 {
+		// 如果找到了，才有必要判断下面这些
+		if updateTime < time.Now().AddDate(0, 0, -1).Unix() {
+			// 如果缓存的时间超过了一天，那么就需要重新过滤
+		} else {
+			// 如果缓存的时间没有超过一天，那么就不需要重新过滤了
+			logger.Infoln("Pool.Filter", fInfo.KeyName, "Not Need Filter")
+			return nil
+		}
 	}
+	// 如果没有找到，那么目标就应该是直接继续过滤
 
 	statusCodeInfos := []StatusCodeInfo{
 		{
