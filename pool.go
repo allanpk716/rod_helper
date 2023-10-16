@@ -816,6 +816,23 @@ func (b *Pool) saveFilterProxyIndex() {
 	}
 
 	saveFPath := filepath.Join(proxyCacheFolder, proxyCacheFileName)
+	if IsFile(saveFPath) == true {
+		// 如果文件存在，那么先加载这个本地的缓存文件
+		localPC := NewProxyCache(b.filterProxyInfoIndexList, b.nowFilterProxyInfoIndex)
+		err := ToStruct(saveFPath, localPC)
+		if err != nil {
+			logger.Panicln("save proxy filter cache info failed: ", err)
+		}
+		// 然后再附件上这次的缓存信息
+		for keyName, indexList := range b.filterProxyInfoIndexList {
+			localPC.FilterProxyInfoIndexList[keyName] = indexList
+			localPC.NowFilterProxyInfoIndex[keyName] = b.nowFilterProxyInfoIndex[keyName]
+		}
+		for keyName, indexList := range localPC.FilterProxyInfoIndexList {
+			b.filterProxyInfoIndexList[keyName] = indexList
+			b.nowFilterProxyInfoIndex[keyName] = localPC.NowFilterProxyInfoIndex[keyName]
+		}
+	}
 	err := ToFile(saveFPath, NewProxyCache(b.filterProxyInfoIndexList, b.nowFilterProxyInfoIndex))
 	if err != nil {
 		logger.Panicln("save proxy filter cache info failed: ", err)
