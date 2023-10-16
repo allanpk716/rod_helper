@@ -134,7 +134,8 @@ func (b *Pool) SetKeyName(keyName string) error {
 		return ErrProxyInfosIsEmpty
 	}
 	// 设置索引
-	b.nowFilterProxyInfoIndex[keyName] = 0
+	b.nowFilterProxyInfoIndex[keyName] = b.filterProxyInfoIndexList[b.nowKeyName][0]
+	b.nowOrgProxyIndex = b.filterProxyInfoIndexList[b.nowKeyName][0]
 
 	return nil
 }
