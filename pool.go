@@ -8,6 +8,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/panjf2000/ants/v2"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/ysmood/gson"
@@ -100,6 +101,7 @@ func NewPool(browserOptions *PoolOptions) *Pool {
 
 	b.filterProxyInfoIndexList = make(map[string][]int)
 	b.nowFilterProxyInfoIndex = make(map[string]int)
+
 	return b
 }
 
@@ -131,6 +133,9 @@ func (b *Pool) SetKeyName(keyName string) error {
 	if len(nowProxyInfoIndexs) < 1 {
 		return ErrProxyInfosIsEmpty
 	}
+	// 设置索引
+	b.nowFilterProxyInfoIndex[keyName] = 0
+
 	return nil
 }
 
@@ -140,6 +145,19 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 	if len(b.orgProxyInfos) < 1 {
 		return ErrProxyInfosIsEmpty
 	}
+	var err error
+	updateTime, err := b.loadFilterProxyIndex()
+	if err != nil {
+		return err
+	}
+	if updateTime < time.Now().AddDate(0, 0, -1).Unix() {
+		// 如果缓存的时间超过了一天，那么就需要重新过滤
+	} else {
+		// 如果缓存的时间没有超过一天，那么就不需要重新过滤了
+		logger.Infoln("Pool.Filter", fInfo.KeyName, "Not Need Filter")
+		return nil
+	}
+
 	statusCodeInfos := []StatusCodeInfo{
 		{
 			Codes:    []int{404},
@@ -159,7 +177,6 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 	}
 
 	var nowBrowser *BrowserInfo
-	var err error
 	if tcpOrBrowserTest == false {
 		nowBrowser, err = b.NewBrowser()
 		if err != nil {
@@ -225,12 +242,15 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 		})
 		if err != nil {
 			logger.Errorf("Pool.Filter 工作池提交任务失败: %v", err)
+			return err
 		}
 	}
 
 	wg.Wait()
 	// 设置索引
 	b.nowFilterProxyInfoIndex[fInfo.KeyName] = 0
+	// 缓存
+	b.saveFilterProxyIndex()
 
 	logger.Infoln("Pool.Filter", fInfo.KeyName, "End")
 
@@ -774,4 +794,62 @@ func (b *Pool) addNowProxyIndex() {
 	}
 }
 
+// saveFilterProxyIndex 本次当前的缓存索引信息到本地文件
+func (b *Pool) saveFilterProxyIndex() {
+
+	proxyCacheFolder := GetProxyCacheFolder("")
+	if IsDir(proxyCacheFolder) == false {
+		err := os.MkdirAll(proxyCacheFolder, os.ModePerm)
+		if err != nil {
+			logger.Panicln("save proxy filter cache info failed: ", err)
+		}
+	}
+
+	saveFPath := filepath.Join(proxyCacheFolder, proxyCacheFileName)
+	err := ToFile(saveFPath, NewProxyCache(b.filterProxyInfoIndexList, b.nowFilterProxyInfoIndex))
+	if err != nil {
+		logger.Panicln("save proxy filter cache info failed: ", err)
+	}
+}
+
+// loadFilterProxyIndex 加载本地可能存在的缓存索引清单文件
+func (b *Pool) loadFilterProxyIndex() (int64, error) {
+
+	saveFPath := filepath.Join(GetProxyCacheFolder(""), proxyCacheFileName)
+	if IsFile(saveFPath) == true {
+
+		pc := NewProxyCache(b.filterProxyInfoIndexList, b.nowFilterProxyInfoIndex)
+		err := ToStruct(saveFPath, pc)
+		if err != nil {
+			return -1, err
+		}
+
+		b.filterProxyInfoIndexList = pc.FilterProxyInfoIndexList
+		b.nowFilterProxyInfoIndex = pc.NowFilterProxyInfoIndex
+
+		return pc.UpdateTime, nil
+	} else {
+		return 0, nil
+	}
+}
+
 var ErrKeyNameIsNotExist = errors.New("key name is not exist")
+
+const (
+	proxyCacheFileName = "proxy_cache.json"
+)
+
+type ProxyCache struct {
+	UpdateTime               int64            // 更新时间
+	FilterProxyInfoIndexList map[string][]int // 过滤后的代理信息
+	NowFilterProxyInfoIndex  map[string]int   // 过滤后的代理信息的索引
+}
+
+func NewProxyCache(filterProxyInfoIndexList map[string][]int, nowFilterProxyInfoIndex map[string]int) *ProxyCache {
+	pc := ProxyCache{
+		FilterProxyInfoIndexList: filterProxyInfoIndexList,
+		NowFilterProxyInfoIndex:  nowFilterProxyInfoIndex,
+		UpdateTime:               time.Now().Unix(),
+	}
+	return &pc
+}

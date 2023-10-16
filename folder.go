@@ -12,7 +12,7 @@ func GetRodTmpRootFolder(nowProcessRoot string) string {
 	if nowProcessRoot == "" {
 		nowProcessRoot = "."
 	}
-	nowProcessRoot = filepath.Join(nowProcessRoot,  RodCacheFolder)
+	nowProcessRoot = filepath.Join(nowProcessRoot, RodCacheFolder)
 	err := os.MkdirAll(nowProcessRoot, os.ModePerm)
 	if err != nil {
 		logger.Panicln(err)
@@ -74,6 +74,20 @@ func GetADBlockFolder(nowProcessRoot string) string {
 	return nowProcessRoot
 }
 
+// GetProxyCacheFolder 代理索引缓存目录
+func GetProxyCacheFolder(nowProcessRoot string) string {
+
+	if nowProcessRoot == "" {
+		nowProcessRoot = "."
+	}
+	nowProcessRoot = filepath.Join(nowProcessRoot, ProxyCacheFolder)
+	err := os.MkdirAll(nowProcessRoot, os.ModePerm)
+	if err != nil {
+		logger.Panicln(err)
+	}
+	return nowProcessRoot
+}
+
 // GetADBlockUnZipFolder 在程序的根目录新建，adblock 缓存用文件夹
 func GetADBlockUnZipFolder(nowProcessRoot string) string {
 
@@ -91,8 +105,9 @@ func GetADBlockUnZipFolder(nowProcessRoot string) string {
 
 // 缓存文件的位置信息，都是在程序的根目录下的 cache 中
 const (
-	RodCacheFolder      = "rod"           // rod 的缓存目录
-	PluginFolder        = "Plugin"        // 插件的目录
-	ADBlockFolder       = "adblock"       // adblock
-	ADBlockUnZipFolder  = "adblock_unzip" // adblock unzip
+	RodCacheFolder     = "rod"           // rod 的缓存目录
+	PluginFolder       = "Plugin"        // 插件的目录
+	ADBlockFolder      = "adblock"       // adblock
+	ADBlockUnZipFolder = "adblock_unzip" // adblock unzip
+	ProxyCacheFolder   = "proxy_cache"   // 代理索引缓存目录
 )

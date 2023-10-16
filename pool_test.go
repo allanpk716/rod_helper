@@ -30,7 +30,10 @@ func TestNewMultiBrowser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	err = b.SetKeyName("imdb")
+	if err != nil {
+		t.Fatal(err)
+	}
 	proxyInfos, err := b.GetFilterProxyInfos(fInfo.KeyName)
 	if err != nil {
 		t.Fatal(err)
