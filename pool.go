@@ -198,14 +198,16 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 
 		logger.Infoln("Pool.Filter", deliveryInfo.ProxyInfo.Name, deliveryInfo.ProxyInfo.Index, "Start...")
 
+		urlTestPassCount := 0
 		// 测试这节点
 		for _, pageInfo := range deliveryInfo.PageInfos {
 
 			if deliveryInfo.tcpOrBrowserTest == true {
 				speedResult, err := b.TryLoadUrl(deliveryInfo.ProxyInfo, pageInfo)
 				if err != nil {
+					// 只要一个失败就无需继续了
 					logger.Errorf("Pool.Filter TryLoadUrl error: %v", err)
-					continue
+					break
 				}
 				logger.Infoln("Pool.Filter", deliveryInfo.ProxyInfo.Name, deliveryInfo.ProxyInfo.Index, pageInfo.Name, speedResult)
 
@@ -213,14 +215,21 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 
 				speedResult, nowPage, err := b.TryLoadPage(deliveryInfo.Browser, deliveryInfo.ProxyInfo, pageInfo, statusCodeInfos, false)
 				if err != nil {
+					// 只要一个失败就无需继续了
 					logger.Errorf("Pool.Filter TryLoadPage error: %v", err)
-					continue
+					break
 				}
 				if nowPage != nil {
 					_ = nowPage.Close()
 				}
 				logger.Infoln("Pool.Filter", deliveryInfo.ProxyInfo.Name, deliveryInfo.ProxyInfo.Index, pageInfo.Name, speedResult)
 			}
+
+			urlTestPassCount += 1
+		}
+
+		if len(deliveryInfo.PageInfos) == urlTestPassCount {
+			// 需要所有的 PageInfos 都通过测试才能够继续
 			// 加入缓存列表
 			b.filterProxyLocker.Lock()
 			b.filterProxyInfoIndexList[fInfo.KeyName] = append(b.filterProxyInfoIndexList[fInfo.KeyName], deliveryInfo.ProxyInfo.Index)
