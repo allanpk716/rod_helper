@@ -70,11 +70,12 @@ func NewFilterInfo(key string, needTestUrlInfos []PageInfo) *FilterInfo {
 }
 
 type PageInfo struct {
-	Name               string   // 这个页面的目标是干什么
-	Url                string   // 这个页面的 Url
-	PageTimeOut        int      // 这个页面加载的超时时间
-	SuccessWord        []string // 为空的时候无需检测
-	ExistElementXPaths []string // 必须存在的元素 XPath
+	Name               string            // 这个页面的目标是干什么
+	Url                string            // 这个页面的 Url
+	PageTimeOut        int               // 这个页面加载的超时时间
+	Header             map[string]string // 这个页面的 Header
+	SuccessWord        []string          // 为空的时候无需检测
+	ExistElementXPaths []string          // 必须存在的元素 XPath
 }
 
 func (p PageInfo) GetPageTimeOut() time.Duration {
@@ -90,9 +91,32 @@ func (p PageInfo) HasSuccessWord() bool {
 }
 
 type DeliveryInfo struct {
-	Browser          *BrowserInfo
-	ProxyInfo        *XrayPoolProxyInfo
-	PageInfos        []PageInfo
-	Wg               *sync.WaitGroup
-	tcpOrBrowserTest bool
+	Browser   *BrowserInfo
+	ProxyInfo *XrayPoolProxyInfo
+	PageInfos []PageInfo
+	Wg        *sync.WaitGroup
+	LoadType  TryLoadType
+}
+
+// TryLoadType 测试连接的类型
+type TryLoadType int
+
+const (
+	WebPageWithBrowser TryLoadType = iota + 1
+	WebPageWithHttpClient
+)
+
+type ProxyCache struct {
+	UpdateTime               int64            // 更新时间
+	FilterProxyInfoIndexList map[string][]int // 过滤后的代理信息
+	NowFilterProxyInfoIndex  map[string]int   // 过滤后的代理信息的索引
+}
+
+func NewProxyCache(filterProxyInfoIndexList map[string][]int, nowFilterProxyInfoIndex map[string]int) *ProxyCache {
+	pc := ProxyCache{
+		FilterProxyInfoIndexList: filterProxyInfoIndexList,
+		NowFilterProxyInfoIndex:  nowFilterProxyInfoIndex,
+		UpdateTime:               time.Now().Unix(),
+	}
+	return &pc
 }

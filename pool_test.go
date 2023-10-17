@@ -26,7 +26,7 @@ func TestNewMultiBrowser(t *testing.T) {
 			},
 		},
 	})
-	err := b.Filter(fInfo, 2, true)
+	err := b.Filter(fInfo, 2, WebPageWithHttpClient)
 	if err != nil {
 		t.Fatal(err)
 	}

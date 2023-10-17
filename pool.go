@@ -141,7 +141,7 @@ func (b *Pool) SetKeyName(keyName string) error {
 }
 
 // Filter 传入一批需要进行测试的 URL，然后过滤掉不可用的代理
-func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) error {
+func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, loadType TryLoadType) error {
 
 	if len(b.orgProxyInfos) < 1 {
 		return ErrProxyInfosIsEmpty
@@ -184,7 +184,7 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 	}
 
 	var nowBrowser *BrowserInfo
-	if tcpOrBrowserTest == false {
+	if loadType == WebPageWithBrowser {
 		nowBrowser, err = b.NewBrowser()
 		if err != nil {
 			return err
@@ -208,7 +208,8 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 		// 测试这节点
 		for _, pageInfo := range deliveryInfo.PageInfos {
 
-			if deliveryInfo.tcpOrBrowserTest == true {
+			if deliveryInfo.LoadType == WebPageWithHttpClient {
+
 				speedResult, err := b.TryLoadUrl(deliveryInfo.ProxyInfo, pageInfo)
 				if err != nil {
 					// 只要一个失败就无需继续了
@@ -250,11 +251,11 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 		wg.Add(1)
 
 		err = p.Invoke(DeliveryInfo{
-			Browser:          nowBrowser,
-			ProxyInfo:        proxyInfo,
-			PageInfos:        fInfo.PageInfos,
-			Wg:               &wg,
-			tcpOrBrowserTest: tcpOrBrowserTest,
+			Browser:   nowBrowser,
+			ProxyInfo: proxyInfo,
+			PageInfos: fInfo.PageInfos,
+			Wg:        &wg,
+			LoadType:  loadType,
 		})
 		if err != nil {
 			logger.Errorf("Pool.Filter 工作池提交任务失败: %v", err)
@@ -267,6 +268,10 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, tcpOrBrowserTest bool) 
 	b.nowFilterProxyInfoIndex[fInfo.KeyName] = 0
 	// 缓存
 	b.saveFilterProxyIndex()
+
+	if len(b.filterProxyInfoIndexList[fInfo.KeyName]) < 1 {
+		return errors.New("Pool.Filter " + fInfo.KeyName + " Filter Result is Empty")
+	}
 
 	logger.Infoln("Pool.Filter", fInfo.KeyName, "End")
 
@@ -741,7 +746,11 @@ func (b *Pool) TryLoadUrl(nowProxyInfo *XrayPoolProxyInfo, pageInfo PageInfo) (i
 	}
 
 	start := time.Now()
-	res, err := client.R().Get(pageInfo.Url)
+	req := client.R()
+	if len(pageInfo.Header) > 0 {
+		req.SetHeaders(pageInfo.Header)
+	}
+	res, err := req.Get(pageInfo.Url)
 	elapsed := time.Since(start)
 	if err != nil {
 		return -1, err
@@ -749,7 +758,7 @@ func (b *Pool) TryLoadUrl(nowProxyInfo *XrayPoolProxyInfo, pageInfo PageInfo) (i
 
 	speedResult := int(float32(elapsed.Nanoseconds()) / 1e6)
 	if res.StatusCode() != http.StatusOK {
-		return -1, errors.New("StatusCode is not 200")
+		return -1, errors.New("StatusCode is not 200, StatusCode: " + strconv.Itoa(res.StatusCode()) + ", Url: " + pageInfo.Url)
 	}
 
 	pageHtmlString := string(res.Body())
@@ -871,18 +880,3 @@ var ErrKeyNameIsNotExist = errors.New("key name is not exist")
 const (
 	proxyCacheFileName = "proxy_cache.json"
 )
-
-type ProxyCache struct {
-	UpdateTime               int64            // 更新时间
-	FilterProxyInfoIndexList map[string][]int // 过滤后的代理信息
-	NowFilterProxyInfoIndex  map[string]int   // 过滤后的代理信息的索引
-}
-
-func NewProxyCache(filterProxyInfoIndexList map[string][]int, nowFilterProxyInfoIndex map[string]int) *ProxyCache {
-	pc := ProxyCache{
-		FilterProxyInfoIndexList: filterProxyInfoIndexList,
-		NowFilterProxyInfoIndex:  nowFilterProxyInfoIndex,
-		UpdateTime:               time.Now().Unix(),
-	}
-	return &pc
-}
