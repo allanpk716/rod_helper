@@ -155,7 +155,7 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, loadType TryLoadType) e
 	_, found := b.filterProxyInfoIndexList[fInfo.KeyName]
 	if found == true && len(b.filterProxyInfoIndexList[fInfo.KeyName]) > 0 {
 		// 如果找到了，才有必要判断下面这些
-		if updateTime < time.Now().AddDate(0, 0, -1).Unix() {
+		if updateTime[fInfo.KeyName] < time.Now().AddDate(0, 0, -1).Unix() {
 			// 如果缓存的时间超过了一天，那么就需要重新过滤
 		} else {
 			// 如果缓存的时间没有超过一天，那么就不需要重新过滤了
@@ -830,14 +830,17 @@ func (b *Pool) saveFilterProxyIndex() {
 		}
 	}
 
+	var localUpdateTime = make(map[string]int64)
 	saveFPath := filepath.Join(proxyCacheFolder, proxyCacheFileName)
 	if IsFile(saveFPath) == true {
 		// 如果文件存在，那么先加载这个本地的缓存文件
-		localPC := NewProxyCache(b.filterProxyInfoIndexList, b.nowFilterProxyInfoIndex)
+		localPC := NewProxyCache()
 		err := ToStruct(saveFPath, localPC)
 		if err != nil {
 			logger.Panicln("save proxy filter cache info failed: ", err)
 		}
+		localUpdateTime = localPC.UpdateTime
+
 		// 然后再附件上这次的缓存信息
 		for keyName, indexList := range b.filterProxyInfoIndexList {
 			localPC.FilterProxyInfoIndexList[keyName] = indexList
@@ -848,30 +851,36 @@ func (b *Pool) saveFilterProxyIndex() {
 			b.nowFilterProxyInfoIndex[keyName] = localPC.NowFilterProxyInfoIndex[keyName]
 		}
 	}
-	err := ToFile(saveFPath, NewProxyCache(b.filterProxyInfoIndexList, b.nowFilterProxyInfoIndex))
+	needSave := NewProxyCache()
+	needSave.NowFilterProxyInfoIndex = b.nowFilterProxyInfoIndex
+	needSave.FilterProxyInfoIndexList = b.filterProxyInfoIndexList
+	for keyName, updateTime := range localUpdateTime {
+		needSave.UpdateTime[keyName] = updateTime
+	}
+	needSave.UpdateTime[b.nowKeyName] = time.Now().Unix()
+	err := ToFile(saveFPath, needSave)
 	if err != nil {
 		logger.Panicln("save proxy filter cache info failed: ", err)
 	}
 }
 
 // loadFilterProxyIndex 加载本地可能存在的缓存索引清单文件
-func (b *Pool) loadFilterProxyIndex() (int64, error) {
+func (b *Pool) loadFilterProxyIndex() (map[string]int64, error) {
 
 	saveFPath := filepath.Join(GetProxyCacheFolder(""), proxyCacheFileName)
 	if IsFile(saveFPath) == true {
 
-		pc := NewProxyCache(b.filterProxyInfoIndexList, b.nowFilterProxyInfoIndex)
+		pc := NewProxyCache()
 		err := ToStruct(saveFPath, pc)
 		if err != nil {
-			return -1, err
+			return nil, err
 		}
-
 		b.filterProxyInfoIndexList = pc.FilterProxyInfoIndexList
 		b.nowFilterProxyInfoIndex = pc.NowFilterProxyInfoIndex
 
 		return pc.UpdateTime, nil
 	} else {
-		return 0, nil
+		return make(map[string]int64), nil
 	}
 }
 

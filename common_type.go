@@ -107,16 +107,16 @@ const (
 )
 
 type ProxyCache struct {
-	UpdateTime               int64            // 更新时间
+	UpdateTime               map[string]int64 // 更新时间
 	FilterProxyInfoIndexList map[string][]int // 过滤后的代理信息
 	NowFilterProxyInfoIndex  map[string]int   // 过滤后的代理信息的索引
 }
 
-func NewProxyCache(filterProxyInfoIndexList map[string][]int, nowFilterProxyInfoIndex map[string]int) *ProxyCache {
+func NewProxyCache() *ProxyCache {
 	pc := ProxyCache{
-		FilterProxyInfoIndexList: filterProxyInfoIndexList,
-		NowFilterProxyInfoIndex:  nowFilterProxyInfoIndex,
-		UpdateTime:               time.Now().Unix(),
+		FilterProxyInfoIndexList: make(map[string][]int),
+		NowFilterProxyInfoIndex:  make(map[string]int),
+		UpdateTime:               make(map[string]int64),
 	}
 	return &pc
 }
