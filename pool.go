@@ -590,21 +590,13 @@ func (b *Pool) NewBrowserWithRandomProxy() (*BrowserInfo, error) {
 
 	b.httpProxyLocker.Lock()
 	defer func() {
-		b.nowOrgProxyIndex++
+		b.addNowProxyIndex()
 		b.httpProxyLocker.Unlock()
 	}()
 
-	if len(b.orgProxyInfos) < 1 {
-		return nil, ErrProxyInfosIsEmpty
-	}
-
-	if b.nowOrgProxyIndex >= len(b.orgProxyInfos) {
-		b.nowOrgProxyIndex = 0
-	}
-
 	cachePath := b.rodOptions.CacheRootDirPath()
 	oneBrowserInfo, err := NewBrowserBase(cachePath,
-		b.rodOptions.BrowserFPath(), b.orgProxyInfos[b.nowOrgProxyIndex].HttpUrl,
+		b.rodOptions.BrowserFPath(), b.orgProxyInfos[b.getNowProxyIndex()].HttpUrl,
 		b.rodOptions.LoadAdblock(), b.rodOptions.LoadPicture())
 	if err != nil {
 		return nil, errors.New("NewBrowserWithRandomProxy.NewBrowserBase error:" + err.Error())
