@@ -9,8 +9,10 @@ require (
 	github.com/go-rod/rod v0.112.0
 	github.com/mediabuyerbot/go-crx3 v1.3.1
 	github.com/mholt/archiver/v3 v3.5.1
+	github.com/panjf2000/ants/v2 v2.8.2
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
+	github.com/ysmood/gson v0.7.2
 	golang.org/x/text v0.13.0
 )
 
@@ -38,7 +40,6 @@ require (
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
-	github.com/ysmood/gson v0.7.2 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
 	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
 	golang.org/x/net v0.15.0 // indirect

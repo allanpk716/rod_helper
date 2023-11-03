@@ -51,8 +51,8 @@ func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 	browserVersion = versions[1]
 	// 判断插件是否已经下载
 	desFile := filepath.Join(GetADBlockFolder(cacheRootDirPath), browserVersion+".crx")
-	if IsFile(desFile) == false ||
-		getDownloadedCacheTime(cacheRootDirPath).DownloadedTime < time.Now().AddDate(0, 0, -7).Unix() {
+	if IsFile(desFile) == false {
+		//  || getDownloadedCacheTime(cacheRootDirPath).DownloadedTime < time.Now().AddDate(0, 0, -7).Unix()
 		// 没有下载，那么就去下载，或者下载的时间超过了一周，也需要再次下载
 		// 下载插件
 		logger.Infoln("download adblock plugin start...")

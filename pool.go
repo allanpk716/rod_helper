@@ -8,7 +8,10 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/panjf2000/ants/v2"
+	"io/ioutil"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/ysmood/gson"
@@ -24,17 +27,18 @@ import (
 )
 
 type Pool struct {
-	log                      *logrus.Logger
-	rodOptions               *PoolOptions         // 参数
-	nowOrgProxyIndex         int                  // 当前使用的 http 代理的索引
-	httpProxyLocker          sync.Mutex           // http 代理的锁
-	lbHttpUrl                string               // 负载均衡的 http proxy url
-	lbPort                   int                  // 负载均衡 http 端口
-	orgProxyInfos            []*XrayPoolProxyInfo // XrayPool 中的代理信息
-	filterProxyInfoIndexList map[string][]int     // 过滤后的代理信息
-	nowFilterProxyInfoIndex  map[string]int       // 过滤后的代理信息的索引
-	filterProxyLocker        sync.Mutex           // 过滤代理的锁
-	nowKeyName               string               // 当前使用的 keyName，如果是空，那么就是默认使用全部的代理列表，如果指定了，那么就是指定过滤后的列表
+	log                       *logrus.Logger
+	rodOptions                *PoolOptions         // 参数
+	nowOrgProxyIndex          int                  // 当前使用的 http 代理的索引
+	httpProxyLocker           sync.Mutex           // http 代理的锁
+	lbHttpUrl                 string               // 负载均衡的 http proxy url
+	lbPort                    int                  // 负载均衡 http 端口
+	orgProxyInfos             []*XrayPoolProxyInfo // XrayPool 中的代理信息
+	filterProxyInfoIndexList  map[string][]int     // 过滤后的代理信息
+	nowFilterProxyInfoIndex   map[string]int       // 过滤后的代理信息的索引
+	filterProxyInfoUpdateTime map[string]int64     // 过滤后的代理信息的索引的更新时间
+	filterProxyLocker         sync.Mutex           // 过滤代理的锁
+	nowKeyName                string               // 当前使用的 keyName，如果是空，那么就是默认使用全部的代理列表，如果指定了，那么就是指定过滤后的列表
 }
 
 // NewPool 面向与爬虫的时候使用 Pool
@@ -101,6 +105,7 @@ func NewPool(browserOptions *PoolOptions) *Pool {
 
 	b.filterProxyInfoIndexList = make(map[string][]int)
 	b.nowFilterProxyInfoIndex = make(map[string]int)
+	b.filterProxyInfoUpdateTime = make(map[string]int64)
 
 	return b
 }
@@ -147,7 +152,7 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, loadType TryLoadType) e
 		return ErrProxyInfosIsEmpty
 	}
 	var err error
-	updateTime, err := b.loadFilterProxyIndex()
+	err = b.loadFilterProxyIndex()
 	if err != nil {
 		return err
 	}
@@ -155,7 +160,7 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, loadType TryLoadType) e
 	_, found := b.filterProxyInfoIndexList[fInfo.KeyName]
 	if found == true && len(b.filterProxyInfoIndexList[fInfo.KeyName]) > 0 {
 		// 如果找到了，才有必要判断下面这些
-		if updateTime[fInfo.KeyName] < time.Now().AddDate(0, 0, -1).Unix() {
+		if b.filterProxyInfoUpdateTime[fInfo.KeyName] < time.Now().AddDate(0, 0, -1).Unix() {
 			// 如果缓存的时间超过了一天，那么就需要重新过滤
 		} else {
 			// 如果缓存的时间没有超过一天，那么就不需要重新过滤了
@@ -209,7 +214,7 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, loadType TryLoadType) e
 		for _, pageInfo := range deliveryInfo.PageInfos {
 
 			if deliveryInfo.LoadType == WebPageWithHttpClient {
-
+				// 使用 http client 测试
 				speedResult, err := b.TryLoadUrl(deliveryInfo.ProxyInfo, pageInfo)
 				if err != nil {
 					// 只要一个失败就无需继续了
@@ -219,8 +224,8 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, loadType TryLoadType) e
 				logger.Infoln("Pool.Filter", deliveryInfo.ProxyInfo.Name, deliveryInfo.ProxyInfo.Index, pageInfo.Name, speedResult)
 
 			} else {
-
-				speedResult, nowPage, err := b.TryLoadPage(deliveryInfo.Browser, deliveryInfo.ProxyInfo, pageInfo, statusCodeInfos, false)
+				// 使用浏览器测试
+				speedResult, nowPage, err := b.TryLoadPage(deliveryInfo.Browser, deliveryInfo.ProxyInfo, pageInfo, statusCodeInfos, true)
 				if err != nil {
 					// 只要一个失败就无需继续了
 					logger.Errorf("Pool.Filter TryLoadPage error: %v", err)
@@ -266,6 +271,8 @@ func (b *Pool) Filter(fInfo *FilterInfo, threadSize int, loadType TryLoadType) e
 	wg.Wait()
 	// 设置索引
 	b.nowFilterProxyInfoIndex[fInfo.KeyName] = 0
+	// 设置这个缓存 KeyName 的更新时间
+	b.filterProxyInfoUpdateTime[fInfo.KeyName] = time.Now().Unix()
 	// 缓存
 	b.saveFilterProxyIndex()
 
@@ -749,9 +756,6 @@ func (b *Pool) TryLoadUrl(nowProxyInfo *XrayPoolProxyInfo, pageInfo PageInfo) (i
 	}
 
 	speedResult := int(float32(elapsed.Nanoseconds()) / 1e6)
-	if res.StatusCode() != http.StatusOK {
-		return -1, errors.New("StatusCode is not 200, StatusCode: " + strconv.Itoa(res.StatusCode()) + ", Url: " + pageInfo.Url)
-	}
 
 	pageHtmlString := string(res.Body())
 	if pageInfo.HasSuccessWord() == true {
@@ -762,6 +766,11 @@ func (b *Pool) TryLoadUrl(nowProxyInfo *XrayPoolProxyInfo, pageInfo PageInfo) (i
 			// 需要再次请求这个页面
 			err = errors.New(pageInfo.Name + " Not Contained SuccessWord")
 			return -1, err
+		}
+	} else {
+		// 如果不需要判断成功关键词，那么就需要判断状态码
+		if res.StatusCode() != http.StatusOK {
+			return -1, errors.New("StatusCode is not 200, StatusCode: " + strconv.Itoa(res.StatusCode()) + ", Url: " + pageInfo.Url)
 		}
 	}
 
@@ -807,6 +816,10 @@ func (b *Pool) addNowProxyIndex() {
 		// 具体一个 KeyName 的 index
 		// 需要将对应的 KeyName 的 index 清单中的索引对应到全列表的索引
 		b.nowFilterProxyInfoIndex[b.nowKeyName]++
+		// 避免越界
+		if b.nowFilterProxyInfoIndex[b.nowKeyName] > len(b.filterProxyInfoIndexList[b.nowKeyName])-1 {
+			b.nowFilterProxyInfoIndex[b.nowKeyName] = b.filterProxyInfoIndexList[b.nowKeyName][0]
+		}
 		b.nowOrgProxyIndex = b.filterProxyInfoIndexList[b.nowKeyName][b.nowFilterProxyInfoIndex[b.nowKeyName]]
 	}
 }
@@ -822,62 +835,77 @@ func (b *Pool) saveFilterProxyIndex() {
 		}
 	}
 
-	var localUpdateTime = make(map[string]int64)
-	saveFPath := filepath.Join(proxyCacheFolder, proxyCacheFileName)
-	if IsFile(saveFPath) == true {
-		// 如果文件存在，那么先加载这个本地的缓存文件
-		localPC := NewProxyCache()
-		err := ToStruct(saveFPath, localPC)
+	for keyName, _ := range b.filterProxyInfoIndexList {
+
+		needSave := NewProxyCache()
+		needSave.FilterProxyInfoIndexList = b.filterProxyInfoIndexList[keyName]
+		needSave.NowFilterProxyInfoIndex = b.nowFilterProxyInfoIndex[keyName]
+		needSave.UpdateTime = b.filterProxyInfoUpdateTime[keyName]
+		saveFPath := filepath.Join(proxyCacheFolder, fmt.Sprintf(proxyCacheFileName, keyName))
+		err := ToFile(saveFPath, needSave)
 		if err != nil {
 			logger.Panicln("save proxy filter cache info failed: ", err)
 		}
-		localUpdateTime = localPC.UpdateTime
-
-		// 然后再附件上这次的缓存信息
-		for keyName, indexList := range b.filterProxyInfoIndexList {
-			localPC.FilterProxyInfoIndexList[keyName] = indexList
-			localPC.NowFilterProxyInfoIndex[keyName] = b.nowFilterProxyInfoIndex[keyName]
-		}
-		for keyName, indexList := range localPC.FilterProxyInfoIndexList {
-			b.filterProxyInfoIndexList[keyName] = indexList
-			b.nowFilterProxyInfoIndex[keyName] = localPC.NowFilterProxyInfoIndex[keyName]
-		}
-	}
-	needSave := NewProxyCache()
-	needSave.NowFilterProxyInfoIndex = b.nowFilterProxyInfoIndex
-	needSave.FilterProxyInfoIndexList = b.filterProxyInfoIndexList
-	for keyName, updateTime := range localUpdateTime {
-		needSave.UpdateTime[keyName] = updateTime
-	}
-	needSave.UpdateTime[b.nowKeyName] = time.Now().Unix()
-	err := ToFile(saveFPath, needSave)
-	if err != nil {
-		logger.Panicln("save proxy filter cache info failed: ", err)
 	}
 }
 
 // loadFilterProxyIndex 加载本地可能存在的缓存索引清单文件
-func (b *Pool) loadFilterProxyIndex() (map[string]int64, error) {
+func (b *Pool) loadFilterProxyIndex() error {
 
-	saveFPath := filepath.Join(GetProxyCacheFolder(""), proxyCacheFileName)
-	if IsFile(saveFPath) == true {
-
-		pc := NewProxyCache()
-		err := ToStruct(saveFPath, pc)
-		if err != nil {
-			return nil, err
-		}
-		b.filterProxyInfoIndexList = pc.FilterProxyInfoIndexList
-		b.nowFilterProxyInfoIndex = pc.NowFilterProxyInfoIndex
-
-		return pc.UpdateTime, nil
-	} else {
-		return make(map[string]int64), nil
+	cacheFiles, err := findCacheJsonFile(GetProxyCacheFolder(""))
+	if err != nil {
+		return err
 	}
+
+	for _, file := range cacheFiles {
+
+		// 解析这个文件名对应的是哪个 KeyName
+		fileName := filepath.Base(file)
+		fileName = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+		fileName = strings.TrimPrefix(fileName, "proxy_cache_")
+		pc := NewProxyCache()
+		err = ToStruct(file, pc)
+		if err != nil {
+			return err
+		}
+		// 缓存
+		b.filterProxyInfoIndexList[fileName] = pc.FilterProxyInfoIndexList
+		b.nowFilterProxyInfoIndex[fileName] = pc.NowFilterProxyInfoIndex
+		b.filterProxyInfoUpdateTime[fileName] = pc.UpdateTime
+	}
+
+	return nil
+}
+
+// findCacheJsonFile 搜索当前目录下所有匹配的缓存文件
+func findCacheJsonFile(dirRootPath string) ([]string, error) {
+
+	// 创建一个正则表达式来匹配文件名
+	re := regexp.MustCompile(`^proxy_cache_.*\.json$`)
+	// 遍历文件夹
+	fileList, err := ioutil.ReadDir(dirRootPath)
+	if err != nil {
+		return nil, err
+	}
+	outFiles := make([]string, 0)
+	// 遍历文件列表
+	for _, file := range fileList {
+		if file.IsDir() {
+			// 如果是文件夹，跳过
+			continue
+		}
+		if re.MatchString(file.Name()) {
+			// 如果文件名匹配正则表达式，则处理该文件
+			filePath := filepath.Join(dirRootPath, file.Name())
+			outFiles = append(outFiles, filePath)
+		}
+	}
+
+	return outFiles, nil
 }
 
 var ErrKeyNameIsNotExist = errors.New("key name is not exist")
 
 const (
-	proxyCacheFileName = "proxy_cache.json"
+	proxyCacheFileName = "proxy_cache_%s.json"
 )
