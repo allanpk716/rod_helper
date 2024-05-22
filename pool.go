@@ -817,9 +817,13 @@ func (b *Pool) addNowProxyIndex() {
 		// 需要将对应的 KeyName 的 index 清单中的索引对应到全列表的索引
 		b.nowFilterProxyInfoIndex[b.nowKeyName]++
 		// 避免越界
-		if b.nowFilterProxyInfoIndex[b.nowKeyName] >= len(b.filterProxyInfoIndexList[b.nowKeyName])-1 {
-			b.nowFilterProxyInfoIndex[b.nowKeyName] = b.filterProxyInfoIndexList[b.nowKeyName][0]
+		if b.nowFilterProxyInfoIndex[b.nowKeyName] > len(b.filterProxyInfoIndexList[b.nowKeyName])-1 {
+			b.nowFilterProxyInfoIndex[b.nowKeyName] = 0
 		}
+		//logger.Infoln("addNowProxyIndex", b.nowKeyName)
+		//logger.Infoln("addNowProxyIndex", len(b.filterProxyInfoIndexList[b.nowKeyName]))
+		//logger.Infoln("addNowProxyIndex", b.nowFilterProxyInfoIndex[b.nowKeyName])
+
 		b.nowOrgProxyIndex = b.filterProxyInfoIndexList[b.nowKeyName][b.nowFilterProxyInfoIndex[b.nowKeyName]]
 	}
 }
