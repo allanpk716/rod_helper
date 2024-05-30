@@ -14,6 +14,13 @@ import (
 	"time"
 )
 
+var nowBlocker = uBlock
+
+// SwitchAdBlocker 切换广告屏蔽的核心插件是用那个
+func SwitchAdBlocker(which BlockerType) {
+	nowBlocker = which
+}
+
 // GetADBlock 根据缓存时间，每周获取一次最新的 adblock，注意需要完全关闭所有的 browser，再进行次操作
 func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 
@@ -62,7 +69,14 @@ func GetADBlock(cacheRootDirPath, httpProxyUrl string) (string, error) {
 		}
 		client.SetTimeout(1 * time.Minute)
 		client.SetOutputDirectory(GetADBlockFolder(cacheRootDirPath))
-		adblockDownloadUrl := adblockDownloadUrl0 + browserVersion + adblockDownloadUrl1 + adblockID + adblockDownloadUrl2
+
+		tmpBlockID := uBlockID
+		if nowBlocker == uBlock {
+			tmpBlockID = uBlockID
+		} else {
+			tmpBlockID = adblockID
+		}
+		adblockDownloadUrl := adblockDownloadUrl0 + browserVersion + adblockDownloadUrl1 + tmpBlockID + adblockDownloadUrl2
 		_, err = client.R().
 			SetOutput(browserVersion + ".crx").
 			Get(adblockDownloadUrl)
@@ -157,3 +171,12 @@ const adblockDownloadUrl1 = "&acceptformat=crx2%2Ccrx3&x=id%3D"
 const adblockDownloadUrl2 = "%26uc"
 const adblockID = "gighmmpiobklfepjocnamgkkbiglidom"
 const adblockCacheFileName = "cache_time.json"
+
+const uBlockID = "cjpalhdlnbpafiamejdnhcphjbkeiagm"
+
+type BlockerType int
+
+const (
+	AdBlock BlockerType = iota
+	uBlock
+)
